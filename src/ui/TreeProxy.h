@@ -26,7 +26,7 @@ public:
   TreeProxy(bool staged, QAbstractItemModel *model, QObject *parent);
   virtual ~TreeProxy();
   bool setData(const QModelIndex &index, const QVariant &value,
-               int role = Qt::EditRole, bool ignoreIndexChanges = false);
+               int role = Qt::EditRole) override;
   bool staged() { return mStaged; }
 
   void enableFilter(bool enable) { mFilter = enable; }
@@ -36,7 +36,6 @@ public:
   }
 
 private:
-  using QSortFilterProxyModel::setData;
   bool filterAcceptsRow(int source_row,
                         const QModelIndex &source_parent) const override;
   bool mStaged{

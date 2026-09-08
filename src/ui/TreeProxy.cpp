@@ -31,13 +31,21 @@ TreeProxy::TreeProxy(bool staged, QAbstractItemModel *model, QObject *parent)
 TreeProxy::~TreeProxy() {}
 
 bool TreeProxy::setData(const QModelIndex &index, const QVariant &value,
-                        int role, bool ignoreIndexChanges) {
+                        int role) {
   QModelIndex sourceIndex = mapToSource(index);
   if (index.isValid() && !sourceIndex.isValid())
     return false;
 
+  QVariant newValue = value;
+  if (role == Qt::CheckStateRole) {
+    Qt::CheckState current = static_cast<Qt::CheckState>(
+        sourceModel()->data(sourceIndex, Qt::CheckStateRole).toInt());
+    if (current == Qt::CheckState::PartiallyChecked)
+      newValue = mStaged ? Qt::CheckState::Unchecked : Qt::CheckState::Checked;
+  }
+
   return static_cast<DiffTreeModel *>(sourceModel())
-      ->setData(sourceIndex, value, role, ignoreIndexChanges);
+      ->setData(sourceIndex, newValue, role, false);
 }
 
 bool TreeProxy::filterAcceptsRow(int source_row,
