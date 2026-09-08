@@ -212,7 +212,17 @@ void TreeView::updateCollapseCount(const QModelIndex &topLeft,
 
 void TreeView::updateCollapseCount(const QModelIndex &parent, int first,
                                    int last) {
-  setCollapseCount(countCollapsed());
+  Q_UNUSED(parent)
+  Q_UNUSED(first)
+  Q_UNUSED(last)
+
+  // If the section was fully expanded before these rows appeared, keep it fully
+  // expanded instead of leaving the newly inserted subtree collapsed.
+  if (mCollapseCount == 0) {
+    expandAll();
+  } else {
+    setCollapseCount(countCollapsed());
+  }
 }
 
 /*!
