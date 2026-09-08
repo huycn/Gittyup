@@ -74,7 +74,7 @@
 
 namespace {
 
-const QString kSplitterKey = "reposplitter";
+const QString kSplitterKey = "reposplitter_vertical";
 const QString kMsgFmt = "%1 - <span style='color: gray'>%2</span>";
 
 QString msg(const git::Commit &commit) {
@@ -381,7 +381,7 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   connect(mCommits, &CommitList::statusChanged, watcher,
           &RepositoryWatcher::cancelPendingNotification);
 
-  mDetailSplitter = new QSplitter(Qt::Horizontal, this);
+  mDetailSplitter = new QSplitter(Qt::Vertical, this);
   mDetailSplitter->setChildrenCollapsible(false);
   mDetailSplitter->setHandleWidth(0);
   mDetailSplitter->addWidget(mSideBar);

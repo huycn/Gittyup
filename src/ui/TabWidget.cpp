@@ -144,6 +144,9 @@ TabWidget::TabWidget(QWidget *parent) : QTabWidget(parent) {
   bar->setTabsClosable(true);
   setTabBar(bar);
 
+  // Repositories are switched via the side bar instead of a tab strip.
+  bar->hide();
+
   // Create default widget.
   mDefaultWidget = new DefaultWidget(this);
 
@@ -170,6 +173,9 @@ void TabWidget::tabInserted(int index) {
   emit tabInserted();
 
   mDefaultWidget->setVisible(false);
+
+  // QTabWidget re-shows the tab bar whenever a tab is inserted.
+  tabBar()->hide();
 }
 
 void TabWidget::tabRemoved(int index) {
@@ -178,6 +184,9 @@ void TabWidget::tabRemoved(int index) {
   emit tabRemoved();
 
   mDefaultWidget->setVisible(!count());
+
+  // QTabWidget re-shows the tab bar whenever a tab is removed.
+  tabBar()->hide();
 }
 
 #include "TabWidget.moc"

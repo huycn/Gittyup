@@ -15,6 +15,7 @@
 #include <QWidget>
 
 class QStackedWidget;
+class QTabWidget;
 
 namespace git {
 class Diff;
@@ -90,6 +91,7 @@ private:
 
   enum ContentIndex { DiffIndex, TreeIndex };
 
+  QTabWidget *mTabs;
   QStackedWidget *mDetail;
   QStackedWidget *mContent;
   QLabel *mAuthorLabel;

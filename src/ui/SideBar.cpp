@@ -643,7 +643,6 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
       [tabs, this, mainWindow](const QModelIndex &index) {
         if (isRepoIndex(index)) {
           tabs->setCurrentIndex(index.row());
-          mainWindow->setSideBarVisible(false);
           return;
         }
 
@@ -651,7 +650,6 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
         QString path = index.data(PathRole).toString();
         if (!path.isEmpty()) {
           MainWindow::open(path);
-          mainWindow->setSideBarVisible(false);
           return;
         }
 
@@ -676,7 +674,6 @@ SideBar::SideBar(TabWidget *tabs, MainWindow *mainWindow, QWidget *parent)
             account->setRepositoryPath(account->indexOf(repo), dialog->path());
 
             // Open the repo.
-            mainWindow->setSideBarVisible(false);
             MainWindow::open(dialog->path());
           });
 

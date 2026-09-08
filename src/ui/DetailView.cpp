@@ -44,6 +44,7 @@
 #include <QRegularExpression>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QTabWidget>
 #include <QTextEdit>
 #include <QToolButton>
 #include <QUrl>
@@ -500,9 +501,10 @@ DetailView::DetailView(const git::Repository &repo, QWidget *parent)
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
+  mTabs = new QTabWidget(this);
+  layout->addWidget(mTabs, 1);
+
   mDetail = new StackedWidget(this);
-  mDetail->setVisible(false);
-  layout->addWidget(mDetail);
 
   // Shown when a commit is selected
   mDetail->addWidget(new CommitDetail(this));
@@ -523,11 +525,13 @@ DetailView::DetailView(const git::Repository &repo, QWidget *parent)
 
   mDetail->addWidget(editorFrame);
 
+  // Shown as the second tab: changed file list and diff/blame content.
   mContent = new QStackedWidget(this);
-  layout->addWidget(mContent, 1);
-
   mContent->addWidget(new DoubleTreeWidget(repo, this));
   mContent->addWidget(new TreeWidget(repo, this));
+
+  mTabs->addTab(mContent, tr("Changes"));
+  mTabs->addTab(mDetail, tr("Commit"));
 }
 
 DetailView::~DetailView() {}
@@ -603,7 +607,6 @@ void DetailView::setDiff(const git::Diff &diff, const QString &file,
   QList<git::Commit> commits = view->commits();
 
   mDetail->setCurrentIndex(commits.isEmpty() ? EditorIndex : CommitIndex);
-  mDetail->setVisible(diff.isValid());
 
   if (commits.isEmpty()) {
     mCommitEditor->setDiff(diff);

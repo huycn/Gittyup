@@ -217,10 +217,10 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   // splitter between editor/diffview and TreeViews
   QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
   splitter->setHandleWidth(0);
-  splitter->addWidget(fileView);
   splitter->addWidget(treeViewSplitter);
-  splitter->setStretchFactor(0, 3);
-  splitter->setStretchFactor(1, 1);
+  splitter->addWidget(fileView);
+  splitter->setStretchFactor(0, 1);
+  splitter->setStretchFactor(1, 3);
   // prevent that diffview will be collapsed
   // The problem is that the diffview is between two splitters
   // and if the diffview is collapsed only the splitter of the
