@@ -100,12 +100,13 @@ public:
         mErrorIcon(tabs->style()->standardIcon(QStyle::SP_MessageBoxCritical)) {
     connect(tabs, &TabWidget::tabAboutToBeInserted, this,
             &RepoModel::beginResetModel);
-    connect(tabs, &TabWidget::tabAboutToBeRemoved, this,
-            &RepoModel::beginResetModel);
     connect(tabs, QOverload<>::of(&TabWidget::tabInserted), this,
             &RepoModel::endResetModel);
-    connect(tabs, QOverload<>::of(&TabWidget::tabRemoved), this,
-            &RepoModel::endResetModel);
+
+    connect(tabs, QOverload<>::of(&TabWidget::tabRemoved), this, [this] {
+      beginResetModel();
+      endResetModel();
+    });
     connect(tabs->tabBar(), &QTabBar::tabMoved, [this] {
       beginResetModel();
       endResetModel();
