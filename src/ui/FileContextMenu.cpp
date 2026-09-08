@@ -10,13 +10,11 @@
 #include "FileContextMenu.h"
 #include "RepoView.h"
 #include "IgnoreDialog.h"
-#include "conf/Settings.h"
 #include "Debug.h"
 #include "dialogs/SettingsDialog.h"
 #include "git/Diff.h"
 #include "git/Index.h"
 #include "git/Tree.h"
-#include "host/Repository.h"
 #include "tools/EditTool.h"
 #include "tools/ShowTool.h"
 #include <QApplication>
@@ -51,7 +49,7 @@ void handlePath(const git::Repository &repo, const QString &path,
   if (QFileInfo(fullPath).isDir()) {
     auto dir = QDir(path);
 
-    for (auto entry : QDir(fullPath).entryList(
+    for (auto& entry : QDir(fullPath).entryList(
              QDir::NoDotAndDotDot | QDir::Hidden | QDir::Dirs | QDir::Files)) {
       handlePath(repo, dir.filePath(entry), diff, modified, untracked);
     }
@@ -115,10 +113,10 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
 
     ExternalTool *tool = nullptr;
     // Add diff to local
-    if (tool = ExternalTool::create(file, diff, repo, true, this)) {
+    if ((tool = ExternalTool::create(file, diff, repo, true, this))) {
       Q_ASSERT(tool->kind() == ExternalTool::Diff);
       diffToLocalTools.append(tool);
-      connect(tool, &ExternalTool::error, [this](ExternalTool::Error error) {
+      connect(tool, &ExternalTool::error, this, [this](ExternalTool::Error error) {
         if (error != ExternalTool::BashNotFound)
           return;
 
@@ -133,7 +131,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
     }
 
     // Add diff or merge tool.
-    if (tool = ExternalTool::create(file, diff, repo, false, this)) {
+    if ((tool = ExternalTool::create(file, diff, repo, false, this))) {
       switch (tool->kind()) {
         case ExternalTool::Diff:
           diffTools.append(tool);
@@ -149,7 +147,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
           break;
       }
 
-      connect(tool, &ExternalTool::error, [this](ExternalTool::Error error) {
+      connect(tool, &ExternalTool::error, this, [this](ExternalTool::Error error) {
         if (error != ExternalTool::BashNotFound)
           return;
 
@@ -195,7 +193,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
       }
     }
 
-    addAction(locked ? tr("Unlock") : tr("Lock"),
+    addAction(locked ? tr("Unlock") : tr("Lock"), this,
               [view, files, locked] { view->lfsSetLocked(files, !locked); });
   }
 
@@ -211,21 +209,21 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
     QString name = QFileInfo(file).fileName();
     QMenu *copy = addMenu(tr("Copy File Name"));
     if (!name.isEmpty() && name != file) {
-      copy->addAction(name,
+      copy->addAction(name, this,
                       [name] { QApplication::clipboard()->setText(name); });
     }
-    copy->addAction(rel, [rel] { QApplication::clipboard()->setText(rel); });
-    copy->addAction(abs, [abs] { QApplication::clipboard()->setText(abs); });
+    copy->addAction(rel, this, [rel] { QApplication::clipboard()->setText(rel); });
+    copy->addAction(abs, this, [abs] { QApplication::clipboard()->setText(abs); });
 
     addSeparator();
 
     // History
-    addAction(tr("Filter History"), [view, file] { view->setPathspec(file); });
+    addAction(tr("Filter History"), this, [view, file] { view->setPathspec(file); });
 
     // Navigate
     QMenu *navigate = addMenu(tr("Navigate to"));
     QAction *nextAct = navigate->addAction(tr("Next Revision"));
-    connect(nextAct, &QAction::triggered, [view, file] {
+    connect(nextAct, &QAction::triggered, this, [view, file] {
       if (git::Commit next = view->nextRevision(file)) {
         view->selectCommit(next, file);
       } else {
@@ -234,7 +232,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
     });
 
     QAction *prevAct = navigate->addAction(tr("Previous Revision"));
-    connect(prevAct, &QAction::triggered, [view, file] {
+    connect(prevAct, &QAction::triggered, this, [view, file] {
       if (git::Commit prev = view->previousRevision(file)) {
         view->selectCommit(prev, file);
       } else {
@@ -249,7 +247,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
       git_filemode_t mode = index.mode(file);
       bool exe = (mode == GIT_FILEMODE_BLOB_EXECUTABLE);
       QString exeName = exe ? tr("Unset Executable") : tr("Set Executable");
-      QAction *exeAct = addAction(exeName, [index, file, exe] {
+      QAction *exeAct = addAction(exeName, this, [index, file, exe] {
         git::Index(index).setMode(file, exe ? GIT_FILEMODE_BLOB
                                             : GIT_FILEMODE_BLOB_EXECUTABLE);
       });
@@ -267,11 +265,11 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
   const auto view = mView;
   if (index.isValid()) {
     // Stage/Unstage
-    QAction *stage = addAction(tr("Stage"), [index, files] {
+    QAction *stage = addAction(tr("Stage"), this, [index, files] {
       git::Index(index).setStaged(files, true);
     });
 
-    QAction *unstage = addAction(tr("Unstage"), [index, files] {
+    QAction *unstage = addAction(tr("Unstage"), this, [index, files] {
       git::Index(index).setStaged(files, false);
     });
 
@@ -315,9 +313,9 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
   auto s = repo.submodules();
   QList<git::Submodule> submodules;
   QStringList filePatches;
-  for (auto trackedPatch : files) {
+  for (auto& trackedPatch : files) {
     bool is_submodule = false;
-    for (auto submodule : s) {
+    for (auto& submodule : s) {
       if (submodule.path() == trackedPatch) {
         is_submodule = true;
         submodules.append(submodule);
@@ -336,7 +334,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
   // "Discard Changes" for the unstaged changes only to avoid confusion.
   if (!staged) {
     QAction *discard =
-        addAction(tr("Discard Changes"), [view, modified, submodules] {
+        addAction(tr("Discard Changes"), this, [this, view, modified, submodules] {
           QMessageBox *dialog =
               new QMessageBox(QMessageBox::Warning, tr("Discard Changes?"),
                               tr("Are you sure you want to discard changes in "
@@ -360,7 +358,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
           QString text = tr("Discard Changes");
           QPushButton *discard = dialog->addButton(text, QMessageBox::AcceptRole);
           discard->setObjectName("DiscardButton");
-          connect(discard, &QPushButton::clicked, [view, modified, submodules] {
+          connect(discard, &QPushButton::clicked, this, [view, modified, submodules] {
             git::Repository repo = view->repo();
             int strategy = GIT_CHECKOUT_FORCE;
             if (modified.count() &&
@@ -378,25 +376,25 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
           dialog->open();
         });
     discard->setEnabled(!modified.isEmpty() || submodules.count());
-  }
 
-  QAction *remove = addAction(tr("Remove Untracked Files"),
-                              [view, untracked] { view->clean(untracked); });
-  remove->setObjectName("RemoveAction");
-  remove->setEnabled(!untracked.isEmpty());
+    QAction *remove = addAction(tr("Remove Untracked Files"), this,
+                                [view, untracked] { view->clean(untracked); });
+    remove->setObjectName("RemoveAction");
+    remove->setEnabled(!untracked.isEmpty());
 
-  // Ignore
-  QAction *ignore = addAction(tr("Ignore"));
-  ignore->setObjectName("IgnoreAction");
-  connect(ignore, &QAction::triggered, this, &FileContextMenu::ignoreFile);
-  foreach (const QString &file, files) {
-    int index = diff.indexOf(file);
-    if (index < 0)
-      continue;
+    // Ignore
+    QAction *ignore = addAction(tr("Ignore"));
+    ignore->setObjectName("IgnoreAction");
+    connect(ignore, &QAction::triggered, this, &FileContextMenu::ignoreFile);
+    foreach (const QString &file, files) {
+      int index = diff.indexOf(file);
+      if (index < 0)
+        continue;
 
-    if (diff.status(index) != GIT_DELTA_UNTRACKED) {
-      ignore->setEnabled(false);
-      break;
+      if (diff.status(index) != GIT_DELTA_UNTRACKED) {
+        ignore->setEnabled(false);
+        break;
+      }
     }
   }
 }
@@ -409,20 +407,20 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
   git::Repository repo = view->repo();
 
   // Checkout
-  QAction *checkout = addAction(tr("Checkout"), [view, files] {
-    view->checkout(view->commits().first(), files);
+  QAction *checkout = addAction(tr("Checkout"), this, [view, files] {
+    view->checkout(view->commits().constFirst(), files);
     view->setViewMode(RepoView::DoubleTree);
   });
 
   // Checkout to ...
   QAction *checkoutTo =
-      addAction(tr("Save Selected Version as ..."), [this, view, files] {
+      addAction(tr("Save Selected Version as ..."), this, [this, view, files] {
         QFileDialog d(this); // TODO: this might not live anymore??
         d.setFileMode(QFileDialog::FileMode::Directory);
         d.setOption(QFileDialog::ShowDirsOnly);
         d.setWindowTitle(tr("Select new file directory"));
         if (d.exec()) {
-          const auto folder = d.selectedFiles().first();
+          const auto folder = d.selectedFiles().constFirst();
           const auto save =
               view->addLogEntry(tr("Saving files"),
                                 tr("Saving files of selected version to disk"));
@@ -438,7 +436,7 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
         return true;
       });
 
-  QAction *open = addAction(tr("Open this version"), [this, view, files] {
+  QAction *open = addAction(tr("Open this version"), this, [this, view, files] {
     QString folder = QDir::tempPath();
     const auto &file = files.first();
     auto filename = file.split("/").last();
@@ -473,7 +471,7 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
   //	});
 
   auto isBare = view->repo().isBare();
-  const auto blob = view->commits().first().blob(files.first());
+  const auto blob = view->commits().constFirst().blob(files.first());
   checkout->setEnabled(!isBare);
   checkout->setToolTip(!isBare ? ""
                                : tr("Unable to checkout bare repositories"));
@@ -506,7 +504,7 @@ void FileContextMenu::ignoreFile() {
   d->setAttribute(Qt::WA_DeleteOnClose);
 
   auto *view = mView;
-  connect(d, &QDialog::accepted, [d, view]() {
+  connect(d, &QDialog::accepted, this, [d, view]() {
     auto ignore = d->ignoreText();
     if (!ignore.isEmpty())
       view->ignore(ignore);
@@ -517,7 +515,7 @@ void FileContextMenu::ignoreFile() {
 
 bool FileContextMenu::exportFile(const RepoView *view, const QString &folder,
                                  const QString &file) {
-  const auto blob = view->commits().first().blob(file);
+  const auto blob = view->commits().constFirst().blob(file);
   if (!blob.isValid())
     return false;
 
@@ -537,7 +535,7 @@ FileContextMenu::addExternalToolsAction(const QList<ExternalTool *> &tools) {
     return nullptr;
 
   // Add action.
-  QAction *action = addAction(tools.first()->name(), [this, tools] {
+  QAction *action = addAction(tools.first()->name(), this, [this, tools] {
     foreach (ExternalTool *tool, tools) {
       if (tool->start())
         return;
