@@ -39,6 +39,13 @@ public:
   QList<QModelIndex> selectedIndices() const;
   QString selectedFile() const override;
 
+  /*!
+   * \brief isStagedSelection
+   * Whether the current selection was made in the staged files tree
+   * (as opposed to the unstaged/working directory files tree).
+   */
+  bool isStagedSelection() const;
+
   void setDiff(const git::Diff &diff, const QString &file = QString(),
                const QString &pathspec = QString()) override;
 

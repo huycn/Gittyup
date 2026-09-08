@@ -251,16 +251,44 @@ void DiffView::loadStagedPatches() {
   RepoView *view = RepoView::parentView(this);
   git::Repository repo = view->repo();
   mStagedPatches.clear();
-  // Generate a diff between the head tree and index.
-  if (mDiff.isStatusDiff()) {
-    if (git::Reference head = repo.head()) {
-      if (git::Commit commit = head.target()) {
-        mStagedDiff = repo.diffTreeToIndex(commit.tree());
-        for (int i = 0; i < mStagedDiff.count(); ++i)
-          mStagedPatches[mStagedDiff.name(i)] = i;
-      }
+  mUnstagedPatches.clear();
+  if (!mDiff.isStatusDiff())
+    return;
+
+  // Diff between the head tree and the index: the staged changes.
+  if (git::Reference head = repo.head()) {
+    if (git::Commit commit = head.target()) {
+      mStagedDiff = repo.diffTreeToIndex(commit.tree());
+      for (int i = 0; i < mStagedDiff.count(); ++i)
+        mStagedPatches[mStagedDiff.name(i)] = i;
     }
   }
+
+  // Diff between the index and the working directory: the unstaged
+  // changes, i.e. the working copy against the staged version.
+  mUnstagedDiff = repo.diffIndexToWorkdir();
+  for (int i = 0; i < mUnstagedDiff.count(); ++i)
+    mUnstagedPatches[mUnstagedDiff.name(i)] = i;
+}
+
+void DiffView::sectionPatch(const QString &name, bool staged,
+                            git::Patch &patch, git::Patch &overlay) const {
+  if (staged) {
+    int index = mStagedPatches.value(name, -1);
+    if (index == -1)
+      return;
+
+    patch = mStagedDiff.patch(index);
+    overlay = patch; // every line here is already staged
+    return;
+  }
+
+  int index = mUnstagedPatches.value(name, -1);
+  if (index == -1)
+    return;
+
+  patch = mUnstagedDiff.patch(index);
+  // No overlay: nothing shown here is staged yet.
 }
 
 void DiffView::diffTreeModelDataChanged(const QModelIndex &topLeft,
@@ -284,12 +312,21 @@ void DiffView::diffTreeModelDataChanged(const QModelIndex &topLeft,
       // Respond to index changes only when file is visible in the diffview
       loadStagedPatches();
 
-      QString filename = file->name();
-      git::Patch stagedPatch;
-      const int index = mStagedPatches.value(file->name(), -1);
-      if (index != -1)
-        stagedPatch = mStagedDiff.patch(index);
-      file->updateHunks(stagedPatch);
+      if (mDiff.isStatusDiff()) {
+        auto dtw = dynamic_cast<DoubleTreeWidget *>(mParent);
+        QString filename = file->name();
+        git::Patch patch, overlay;
+        sectionPatch(filename, dtw && dtw->isStagedSelection(), patch,
+                     overlay);
+        if (patch.isValid()) {
+          RepoView *view = RepoView::parentView(this);
+          git::Repository repo = view->repo();
+          QString path = repo.workdir().filePath(filename);
+          bool submodule = repo.lookupSubmodule(filename).isValid();
+          file->updatePatch(patch, overlay, filename, path, submodule);
+        }
+      }
+
       file->setStageState(stageState);
 
       return;
@@ -443,17 +480,26 @@ void DiffView::fetchMore(int fetchWidgets) {
       auto state = static_cast<git::Index::StagedState>(
           indices[i].data(Qt::CheckStateRole).toInt());
 
-      git::Patch staged;
-      const int index = mStagedPatches.value(patch.name(), -1);
-      if (index != -1)
-        staged = mStagedDiff.patch(index);
+      QString name = patch.name();
+
+      // For a status diff, show only the staged half (tree vs. index) or
+      // the unstaged half (index vs. working copy) of this file's changes,
+      // depending on which tree the selection came from.
+      bool stagedSection = mDiff.isStatusDiff() && dtw->isStagedSelection();
+      git::Patch overlay;
+      if (mDiff.isStatusDiff()) {
+        git::Patch sectioned;
+        sectionPatch(name, stagedSection, sectioned, overlay);
+        if (sectioned.isValid())
+          patch = sectioned;
+      }
 
       git::Repository repo = view->repo();
-      QString name = patch.name();
       QString path = repo.workdir().filePath(name);
       bool submodule = repo.lookupSubmodule(name).isValid();
-      FileWidget *file = new FileWidget(this, mDiff, patch, staged, indices[i],
-                                        name, path, submodule, widget());
+      FileWidget *file =
+          new FileWidget(this, mDiff, patch, overlay, indices[i], name, path,
+                         submodule, stagedSection, widget());
       file->setStageState(state);
       mFileWidgetLayout->addWidget(file);
       addedWidgets += file->hunks().count();

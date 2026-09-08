@@ -29,7 +29,7 @@ class Header : public QFrame {
 
 public:
   Header(const git::Diff &diff, const git::Patch &patch, bool binary, bool lfs,
-         bool submodule, QWidget *parent = nullptr);
+         bool submodule, bool stagedSection, QWidget *parent = nullptr);
   void updatePatch(const git::Patch &patch);
   QCheckBox *check() const;
 
@@ -58,6 +58,7 @@ private:
   git::Diff mDiff;
   git::Patch mPatch;
   bool mSubmodule;
+  bool mStagedSection;
 
   QCheckBox *mCheck{nullptr};
   QToolButton *mLfsButton = nullptr;
@@ -89,7 +90,7 @@ public:
   FileWidget(DiffView *view, const git::Diff &diff, const git::Patch &patch,
              const git::Patch &staged, const QModelIndex modelIndex,
              const QString &name, const QString &path, bool submodule,
-             QWidget *parent = nullptr);
+             bool stagedSection, QWidget *parent = nullptr);
   bool isEmpty();
   void updatePatch(const git::Patch &patch, const git::Patch &staged,
                    const QString &name, const QString &path, bool submodule);

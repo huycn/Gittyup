@@ -350,7 +350,7 @@ void DoubleTreeWidget::showFileContextMenu(const QPoint &pos, RepoView *view,
   if (files.isEmpty())
     return;
 
-  auto menu = new FileContextMenu(view, files, git::Index(), tree);
+  auto menu = new FileContextMenu(view, files, git::Index(), tree, staged);
   menu->setAttribute(Qt::WA_DeleteOnClose);
   menu->popup(tree->mapToGlobal(pos));
 }
@@ -388,6 +388,10 @@ QList<QModelIndex> DoubleTreeWidget::selectedIndices() const {
     list.append(proxy->mapToSource(index));
 
   return list;
+}
+
+bool DoubleTreeWidget::isStagedSelection() const {
+  return stagedFiles->selectionModel()->hasSelection();
 }
 
 QString DoubleTreeWidget::selectedFile() const {

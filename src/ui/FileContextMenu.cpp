@@ -87,7 +87,8 @@ void handlePath(const git::Repository &repo, const QString &path,
 } // namespace
 
 FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
-                                 const git::Index &index, QWidget *parent)
+                                 const git::Index &index, QWidget *parent,
+                                 bool staged)
     : QMenu(parent), mView(view), mFiles(files) {
   // Show diff and merge tools for the currently selected diff.
   git::Diff diff = view->diff();
@@ -175,7 +176,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
 
   QList<git::Commit> commits = view->commits();
   if (commits.isEmpty()) {
-    handleUncommittedChanges(index, files);
+    handleUncommittedChanges(index, files, staged);
   } else {
     handleCommits(commits, files);
   }
@@ -259,7 +260,8 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
 }
 
 void FileContextMenu::handleUncommittedChanges(const git::Index &index,
-                                               const QStringList &files) {
+                                               const QStringList &files,
+                                               bool staged) {
   git::Diff diff = mView->diff();
   git::Repository repo = mView->repo();
   const auto view = mView;
@@ -331,49 +333,52 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
     handlePath(repo, file, diff, modified, untracked);
   }
 
-  QAction *discard =
-      addAction(tr("Discard Changes"), [view, modified, submodules] {
-        QMessageBox *dialog =
-            new QMessageBox(QMessageBox::Warning, tr("Discard Changes?"),
-                            tr("Are you sure you want to discard changes in "
-                               "the selected files?"),
-                            QMessageBox::Cancel, view);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->setInformativeText(tr("This action cannot be undone."));
-        QString detailedText = modified.join('\n');
-        for (const auto &s : submodules)
-          detailedText += s.path() + " " + tr("(Submodule)") + "\n";
-        dialog->setDetailedText(detailedText);
+  // "Discard Changes" for the unstaged changes only to avoid confusion.
+  if (!staged) {
+    QAction *discard =
+        addAction(tr("Discard Changes"), [view, modified, submodules] {
+          QMessageBox *dialog =
+              new QMessageBox(QMessageBox::Warning, tr("Discard Changes?"),
+                              tr("Are you sure you want to discard changes in "
+                                 "the selected files?"),
+                              QMessageBox::Cancel, view);
+          dialog->setAttribute(Qt::WA_DeleteOnClose);
+          dialog->setInformativeText(tr("This action cannot be undone."));
+          QString detailedText = modified.join('\n');
+          for (const auto &s : submodules)
+            detailedText += s.path() + " " + tr("(Submodule)") + "\n";
+          dialog->setDetailedText(detailedText);
 
-        // Expand the Show Details
-        foreach (QAbstractButton *button, dialog->buttons()) {
-          if (dialog->buttonRole(button) == QMessageBox::ActionRole) {
-            button->click(); // click it to expand the text
-            break;
+          // Expand the Show Details
+          foreach (QAbstractButton *button, dialog->buttons()) {
+            if (dialog->buttonRole(button) == QMessageBox::ActionRole) {
+              button->click(); // click it to expand the text
+              break;
+            }
           }
-        }
 
-        QString text = tr("Discard Changes");
-        QPushButton *discard = dialog->addButton(text, QMessageBox::AcceptRole);
-        discard->setObjectName("DiscardButton");
-        connect(discard, &QPushButton::clicked, [view, modified, submodules] {
-          git::Repository repo = view->repo();
-          int strategy = GIT_CHECKOUT_FORCE;
-          if (modified.count() &&
-              !repo.checkout(git::Commit(), nullptr, modified, strategy)) {
-            QString text = tr("%1 files").arg(modified.size());
-            LogEntry *parent = view->addLogEntry(text, tr("Discard"));
-            view->error(parent, tr("discard"), text);
-          }
-          view->updateSubmodules(submodules, true, false, true);
+          QString text = tr("Discard Changes");
+          QPushButton *discard = dialog->addButton(text, QMessageBox::AcceptRole);
+          discard->setObjectName("DiscardButton");
+          connect(discard, &QPushButton::clicked, [view, modified, submodules] {
+            git::Repository repo = view->repo();
+            int strategy = GIT_CHECKOUT_FORCE;
+            if (modified.count() &&
+                !repo.checkoutIndex(nullptr, modified, strategy)) {
+              QString text = tr("%1 files").arg(modified.size());
+              LogEntry *parent = view->addLogEntry(text, tr("Discard"));
+              view->error(parent, tr("discard"), text);
+            }
+            view->updateSubmodules(submodules, true, false, true);
 
-          if (submodules.isEmpty())
-            view->refresh();
+            if (submodules.isEmpty())
+              view->refresh();
+          });
+
+          dialog->open();
         });
-
-        dialog->open();
-      });
-  discard->setEnabled(!modified.isEmpty() || submodules.count());
+    discard->setEnabled(!modified.isEmpty() || submodules.count());
+  }
 
   QAction *remove = addAction(tr("Remove Untracked Files"),
                               [view, untracked] { view->clean(untracked); });

@@ -33,8 +33,9 @@ bool disclosure = false;
 
 _FileWidget::Header::Header(const git::Diff &diff, const git::Patch &patch,
                             bool binary, bool lfs, bool submodule,
-                            QWidget *parent)
-    : QFrame(parent), mDiff(diff), mPatch(patch), mSubmodule(submodule) {
+                            bool stagedSection, QWidget *parent)
+    : QFrame(parent), mDiff(diff), mPatch(patch), mSubmodule(submodule),
+      mStagedSection(stagedSection) {
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
   QString name = patch.name();
@@ -276,7 +277,7 @@ void _FileWidget::Header::updatePatch(const git::Patch &patch) {
                       git::Patch::ConflictResolution::Unresolved);
 
   mDiscardButton->setVisible(mDiff.isStatusDiff() && !mSubmodule &&
-                             !isConflicted);
+                             !isConflicted && !mStagedSection);
 }
 QCheckBox *_FileWidget::Header::check() const { return mCheck; }
 
@@ -341,7 +342,8 @@ void _FileWidget::Header::updateCheckState() {
 FileWidget::FileWidget(DiffView *view, const git::Diff &diff,
                        const git::Patch &patch, const git::Patch &staged,
                        const QModelIndex modelIndex, const QString &name,
-                       const QString &path, bool submodule, QWidget *parent)
+                       const QString &path, bool submodule,
+                       bool stagedSection, QWidget *parent)
     : QWidget(parent), mView(view), mDiff(diff), mPatch(patch), mStaged(staged),
       mModelIndex(modelIndex) {
   auto stageState = static_cast<git::Index::StagedState>(
@@ -364,8 +366,8 @@ FileWidget::FileWidget(DiffView *view, const git::Diff &diff,
   }
 
   bool lfs = patch.isLfsPointer();
-  mHeader =
-      new _FileWidget::Header(diff, patch, binary, lfs, submodule, parent);
+  mHeader = new _FileWidget::Header(diff, patch, binary, lfs, submodule,
+                                    stagedSection, parent);
   mHeader->setStageState(stageState);
   connect(mHeader, &_FileWidget::Header::stageStateChanged, this,
           &FileWidget::headerCheckStateChanged);

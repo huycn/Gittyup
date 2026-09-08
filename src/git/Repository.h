@@ -225,6 +225,11 @@ public:
                 const QStringList &paths = QStringList(),
                 int strategy = GIT_CHECKOUT_SAFE);
 
+  // Updates the working directory to match the index (not HEAD) for the given paths.
+  bool checkoutIndex(CheckoutCallbacks *callbacks = nullptr,
+                     const QStringList &paths = QStringList(),
+                     int strategy = GIT_CHECKOUT_SAFE);
+
   // Clean up after merge/rebase/cherry-pick/etc.
   int state() const;
   void cleanupState();

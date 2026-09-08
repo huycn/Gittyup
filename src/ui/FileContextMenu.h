@@ -24,7 +24,7 @@ class FileContextMenu : public QMenu {
 public:
   FileContextMenu(RepoView *view, const QStringList &files,
                   const git::Index &index = git::Index(),
-                  QWidget *parent = nullptr);
+                  QWidget *parent = nullptr, bool staged = false);
 
   QAction *doubleClickAction() { return mDoubleClickAction; }
 
@@ -35,8 +35,14 @@ private:
   QAction *addExternalToolsAction(const QList<ExternalTool *> &tools);
   bool exportFile(const RepoView *view, const QString &folder,
                   const QString &file);
+  /*!
+   * \param staged When true, "Discard Changes" resets the staged files back
+   * to HEAD (leaving the working directory untouched); when false, it
+   * resets the working directory to match the index (leaving staged
+   * changes untouched).
+   */
   void handleUncommittedChanges(const git::Index &index,
-                                const QStringList &files);
+                                const QStringList &files, bool staged);
   void handleCommits(const QList<git::Commit> &commits,
                      const QStringList &files);
 

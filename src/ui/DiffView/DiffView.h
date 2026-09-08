@@ -127,9 +127,25 @@ private:
   void indexChanged(const QStringList &paths);
   void loadStagedPatches();
 
+  /*!
+   * \brief sectionPatch
+   * For a status diff, returns the patch and staged-overlay to display for
+   * \p name, depending on whether the file was selected in the staged or
+   * unstaged tree:
+   *  - staged tree: the tree-to-index patch (staged changes only), with the
+   *    overlay equal to the patch itself so every line shows as staged.
+   *  - unstaged tree: the index-to-workdir patch (working copy against the
+   *    staged version, not the last commit), with no overlay since none of
+   *    it is staged.
+   * Returns an invalid \p patch when \p name has no changes in that half.
+   */
+  void sectionPatch(const QString &name, bool staged, git::Patch &patch, git::Patch &overlay) const;
+
   git::Diff mDiff;
   QMap<QString, int> mStagedPatches;
   git::Diff mStagedDiff;
+  QMap<QString, int> mUnstagedPatches;
+  git::Diff mUnstagedDiff;
 
   QList<FileWidget *> mFiles;
   QList<QMetaObject::Connection> mConnections;

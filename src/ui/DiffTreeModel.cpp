@@ -372,10 +372,10 @@ bool DiffTreeModel::discard(const QModelIndex &index) {
   }
 
   if (filePatches.length() > 0) {
+    // Discard the unstaged changes only: reset the working directory to
+    // match the index. This leaves any staged changes untouched.
     int strategy = GIT_CHECKOUT_FORCE;
-    auto repo = mDiff.patch(list[0]).repo(); // does not matter which index is
-                                             // used all are in the same repo
-    if (!repo.checkout(git::Commit(), nullptr, trackedPatches, strategy))
+    if (!mRepo.checkoutIndex(nullptr, filePatches, strategy))
       return false;
   }
   return true;

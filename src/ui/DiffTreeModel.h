@@ -127,7 +127,8 @@ public:
   void createDiffTree();
   /*!
    * \brief discard
-   * Discard file or folder
+   * Discard the unstaged changes in a file or folder: resets the working
+   * directory to match the index, leaving any staged changes untouched.
    * \param index
    * \return
    */

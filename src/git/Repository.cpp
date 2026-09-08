@@ -1048,6 +1048,41 @@ bool Repository::checkout(const Commit &commit, CheckoutCallbacks *callbacks,
   return !git_checkout_tree(d->repo, obj, &opts);
 }
 
+bool Repository::checkoutIndex(CheckoutCallbacks *callbacks,
+                               const QStringList &paths, int strategy) {
+  git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
+  opts.checkout_strategy = strategy;
+
+  if (callbacks) {
+    opts.notify_flags = callbacks->flags();
+    opts.notify_cb = checkout_notify;
+    opts.notify_payload = callbacks;
+
+    opts.progress_cb = checkout_progress;
+    opts.progress_payload = callbacks;
+  }
+
+  QVector<char *> rawPaths;
+  QVector<QByteArray> storage;
+  if (!paths.isEmpty()) {
+    // Paths are assumed to be exact matches.
+    opts.checkout_strategy |= GIT_CHECKOUT_DISABLE_PATHSPEC_MATCH;
+
+    foreach (const QString &path, paths) {
+      storage.append(path.toUtf8());
+      rawPaths.append(storage.last().data());
+    }
+
+    opts.paths.count = rawPaths.size();
+    opts.paths.strings = rawPaths.data();
+  }
+
+  // Passing a null index tells libgit2 to use the repository's current
+  // index, so this updates the working directory to match what's staged
+  // instead of what's in HEAD.
+  return !git_checkout_index(d->repo, nullptr, &opts);
+}
+
 int Repository::state() const { return git_repository_state(d->repo); }
 
 void Repository::cleanupState() {
