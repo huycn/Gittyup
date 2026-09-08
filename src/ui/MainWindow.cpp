@@ -46,6 +46,7 @@ const QString kActiveKey = "active";
 const QString kSidebarKey = "sidebar";
 const QString kGeometryKey = "geometry";
 const QString kWindowsGroup = "windows";
+const QString kWindowSizeKey = "windowSize";
 
 class TabName {
 public:
@@ -155,12 +156,13 @@ MainWindow::MainWindow(const git::Repository &repo, QWidget *parent,
   // Set search completer.
   searchField->setCompleter(new IndexCompleter(this, searchField));
 
-  // Set default size and position.
-  resize(kDefaultWidth, kDefaultHeight);
+  // Restore size and position.
+  QSize size =  QSettings().value(kWindowSizeKey, QSize(kDefaultWidth, kDefaultHeight)).toSize();
+  resize(size);
 
   QRect desktop = QGuiApplication::primaryScreen()->availableGeometry();
-  int x = (desktop.width() / 2) - (kDefaultWidth / 2);
-  int y = (desktop.height() / 2) - (kDefaultHeight / 2);
+  int x = (desktop.width() / 2) - (size.width() / 2);
+  int y = (desktop.height() / 2) - (size.height() / 2);
   move(x, y);
 
   // Position with respect to existing windows.
@@ -414,6 +416,10 @@ void MainWindow::showEvent(QShowEvent *event) {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
   // FIXME: Attempt to close windows before writing settings?
+
+  if (!isMaximized()) {
+    QSettings().setValue(kWindowSizeKey, size());
+  }
 
   if (sSaveWindowSettings) {
     // Store window state.
