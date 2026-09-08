@@ -7,6 +7,7 @@
 #include "ui/FileContextMenu.h"
 #include "conf/Settings.h"
 
+#include <QPushButton>
 #include <QTextEdit>
 
 using namespace Test;
@@ -45,6 +46,9 @@ private slots:
   void fileMergeCrash();
   void dirtySubmoduleAndStagedSubmodule();
   void conflictedAndStagedFile();
+  void stageAndUnstageSelectionButtons();
+  void stageIntoCollapsedFolderExpandsAndSelectsNextFile();
+  void stageLastLeafClearsSelectionInsteadOfParent();
 
 private:
 };
@@ -350,6 +354,223 @@ void TestTreeView::conflictedAndStagedFile() {
     QVERIFY(index.isValid());
     QCOMPARE(index.data(), "conflictedFile.txt");
   }
+}
+
+void TestTreeView::stageAndUnstageSelectionButtons() {
+  INIT_REPO("TestRepository.zip", false);
+
+  // Modify two root files only, so the unstaged tree shows exactly two
+  // file rows (folder1 and the submodule are left untouched).
+  QHash<QString, QString> fileContent{
+      {"file.txt", "Modified file"},
+      {"file2.txt", "Modified file2"},
+  };
+  {
+    QHashIterator<QString, QString> i(fileContent);
+    while (i.hasNext()) {
+      i.next();
+      QFile file(repo.workdir().filePath(i.key()));
+      QVERIFY(file.exists());
+      QVERIFY(file.open(QFile::WriteOnly));
+      file.write(i.value().toLatin1());
+    }
+  }
+
+  refresh(repoView);
+
+  auto doubleTree = repoView->findChild<DoubleTreeWidget *>();
+  QVERIFY(doubleTree);
+
+  auto unstagedTree = doubleTree->findChild<TreeView *>("Unstaged");
+  QVERIFY(unstagedTree);
+  auto stagedTree = doubleTree->findChild<TreeView *>("Staged");
+  QVERIFY(stagedTree);
+
+  QAbstractItemModel *unstagedModel = unstagedTree->model();
+  QAbstractItemModel *stagedModel = stagedTree->model();
+
+  auto timeout = Timeout(10000, "Repository didn't refresh in time");
+  while (unstagedModel->rowCount() < 2)
+    qWait(300);
+
+  QCOMPARE(unstagedModel->rowCount(), 2);
+  QModelIndex fileTxt = unstagedModel->index(0, 0);
+  QModelIndex file2Txt = unstagedModel->index(1, 0);
+  QCOMPARE(unstagedModel->data(fileTxt).toString(), QString("file.txt"));
+  QCOMPARE(unstagedModel->data(file2Txt).toString(), QString("file2.txt"));
+
+  // Select both unstaged files and stage them using the "Stage" button.
+  unstagedTree->selectionModel()->select(fileTxt,
+                                         QItemSelectionModel::ClearAndSelect);
+  unstagedTree->selectionModel()->select(file2Txt, QItemSelectionModel::Select);
+
+  auto stageButton =
+      doubleTree->findChild<QPushButton *>("StageSelectionButton");
+  QVERIFY(stageButton);
+  mouseClick(stageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(), 0);
+
+  QCOMPARE(unstagedModel->rowCount(), 0);
+  QCOMPARE(stagedModel->rowCount(), 2);
+  QModelIndex stagedFileTxt = stagedModel->index(0, 0);
+  QModelIndex stagedFile2Txt = stagedModel->index(1, 0);
+  QCOMPARE(stagedModel->data(stagedFileTxt).toString(), QString("file.txt"));
+  QCOMPARE(stagedModel->data(stagedFile2Txt).toString(), QString("file2.txt"));
+
+  // Select only file.txt in the staged tree and unstage it with the
+  // "Unstage" button. Selection should advance to file2.txt, the next
+  // file item.
+  stagedTree->selectionModel()->select(stagedFileTxt,
+                                       QItemSelectionModel::ClearAndSelect);
+
+  auto unstageButton =
+      doubleTree->findChild<QPushButton *>("UnstageSelectionButton");
+  QVERIFY(unstageButton);
+  mouseClick(unstageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(), 0);
+
+  QCOMPARE(stagedModel->rowCount(), 1);
+  QCOMPARE(stagedModel->data(stagedModel->index(0, 0)).toString(),
+           QString("file2.txt"));
+
+  QCOMPARE(unstagedModel->rowCount(), 1);
+  QCOMPARE(unstagedModel->data(unstagedModel->index(0, 0)).toString(),
+           QString("file.txt"));
+
+  // Selection should have advanced to file2.txt in the staged tree.
+  QModelIndexList selected = stagedTree->selectionModel()->selectedIndexes();
+  QCOMPARE(selected.count(), 1);
+  QCOMPARE(stagedModel->data(selected.first()).toString(),
+           QString("file2.txt"));
+}
+
+void TestTreeView::stageIntoCollapsedFolderExpandsAndSelectsNextFile() {
+  INIT_REPO("TestRepository.zip", false);
+
+  // Modify both root files and both files inside folder1.
+  QHash<QString, QString> fileContent{
+      {"file.txt", "Modified file"},
+      {"file2.txt", "Modified file2"},
+      {"folder1/file.txt", "Modified file in folder1"},
+      {"folder1/file2.txt", "Modified file2 in folder1"},
+  };
+  {
+    QHashIterator<QString, QString> i(fileContent);
+    while (i.hasNext()) {
+      i.next();
+      QFile file(repo.workdir().filePath(i.key()));
+      QVERIFY(file.exists());
+      QVERIFY(file.open(QFile::WriteOnly));
+      file.write(i.value().toLatin1());
+    }
+  }
+
+  refresh(repoView);
+
+  auto doubleTree = repoView->findChild<DoubleTreeWidget *>();
+  QVERIFY(doubleTree);
+  auto unstagedTree = doubleTree->findChild<TreeView *>("Unstaged");
+  QVERIFY(unstagedTree);
+
+  QAbstractItemModel *unstagedModel = unstagedTree->model();
+
+  auto timeout = Timeout(10000, "Repository didn't refresh in time");
+  while (unstagedModel->rowCount() < 3)
+    qWait(300);
+
+  QCOMPARE(unstagedModel->rowCount(), 3);
+  QModelIndex fileTxt = unstagedModel->index(0, 0);
+  QModelIndex file2Txt = unstagedModel->index(1, 0);
+  QModelIndex folder1 = unstagedModel->index(2, 0);
+  QCOMPARE(unstagedModel->data(fileTxt).toString(), QString("file.txt"));
+  QCOMPARE(unstagedModel->data(file2Txt).toString(), QString("file2.txt"));
+  QCOMPARE(unstagedModel->data(folder1).toString(), QString("folder1"));
+
+  // Make sure folder1 is collapsed: the file inside it must still be found.
+  unstagedTree->collapseAll();
+  QVERIFY(!unstagedTree->isExpanded(folder1));
+
+  // Select the root file2.txt, immediately before folder1, and stage it.
+  unstagedTree->selectionModel()->select(file2Txt,
+                                         QItemSelectionModel::ClearAndSelect);
+
+  auto stageButton =
+      doubleTree->findChild<QPushButton *>("StageSelectionButton");
+  QVERIFY(stageButton);
+  mouseClick(stageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(), 0);
+
+  // file2.txt is gone; folder1 shifts up to row 1.
+  QCOMPARE(unstagedModel->rowCount(), 2);
+  QModelIndex newFolder1 = unstagedModel->index(1, 0);
+  QCOMPARE(unstagedModel->data(newFolder1).toString(), QString("folder1"));
+
+  // Selection must have advanced into folder1's first file, and folder1
+  // must have been expanded to make that selection visible, even though
+  // it was collapsed before.
+  QVERIFY(unstagedTree->isExpanded(newFolder1));
+  QModelIndexList selected = unstagedTree->selectionModel()->selectedIndexes();
+  QCOMPARE(selected.count(), 1);
+  QCOMPARE(unstagedModel->data(selected.first()).toString(),
+           QString("file.txt"));
+  QCOMPARE(selected.first().parent(), newFolder1);
+}
+
+void TestTreeView::stageLastLeafClearsSelectionInsteadOfParent() {
+  INIT_REPO("TestRepository.zip", false);
+
+  // Modify only the files inside folder1, so it is the sole top-level item.
+  QHash<QString, QString> fileContent{
+      {"folder1/file.txt", "Modified file in folder1"},
+      {"folder1/file2.txt", "Modified file2 in folder1"},
+  };
+  {
+    QHashIterator<QString, QString> i(fileContent);
+    while (i.hasNext()) {
+      i.next();
+      QFile file(repo.workdir().filePath(i.key()));
+      QVERIFY(file.exists());
+      QVERIFY(file.open(QFile::WriteOnly));
+      file.write(i.value().toLatin1());
+    }
+  }
+
+  refresh(repoView);
+
+  auto doubleTree = repoView->findChild<DoubleTreeWidget *>();
+  QVERIFY(doubleTree);
+  auto unstagedTree = doubleTree->findChild<TreeView *>("Unstaged");
+  QVERIFY(unstagedTree);
+
+  QAbstractItemModel *unstagedModel = unstagedTree->model();
+
+  auto timeout = Timeout(10000, "Repository didn't refresh in time");
+  while (unstagedModel->rowCount() < 1)
+    qWait(300);
+
+  QCOMPARE(unstagedModel->rowCount(), 1);
+  QModelIndex folder1 = unstagedModel->index(0, 0);
+  QCOMPARE(unstagedModel->data(folder1).toString(), QString("folder1"));
+
+  unstagedTree->expandAll();
+  QCOMPARE(unstagedModel->rowCount(folder1), 2);
+  QModelIndex fileTxt = unstagedModel->index(0, 0, folder1);
+  QModelIndex file2Txt = unstagedModel->index(1, 0, folder1);
+  QCOMPARE(unstagedModel->data(fileTxt).toString(), QString("file.txt"));
+  QCOMPARE(unstagedModel->data(file2Txt).toString(), QString("file2.txt"));
+
+  // Select the last leaf in the tree (folder1/file2.txt). It has a sibling
+  // above it (folder1/file.txt), so the folder is not emptied by staging it.
+  unstagedTree->selectionModel()->select(file2Txt,
+                                         QItemSelectionModel::ClearAndSelect);
+
+  auto stageButton =
+      doubleTree->findChild<QPushButton *>("StageSelectionButton");
+  QVERIFY(stageButton);
+  mouseClick(stageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(), 0);
+
+  // folder1/file2.txt got staged away; only folder1/file.txt remains.
+  QCOMPARE(unstagedModel->rowCount(folder1), 1);
+
+  // Selection must be cleared entirely, not moved to the parent folder.
+  QVERIFY(unstagedTree->selectionModel()->selectedIndexes().isEmpty());
 }
 
 TEST_MAIN(TestTreeView)

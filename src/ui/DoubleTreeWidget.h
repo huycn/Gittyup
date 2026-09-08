@@ -77,6 +77,12 @@ private:
   void loadEditorContent(const QModelIndexList &indexes);
   void toggleCollapseStagedFiles();
   void toggleCollapseUnstagedFiles();
+  /*!
+   * \brief stageOrUnstageSelection
+   * Stages or unstages the files currently selected in \p tree, then selects
+   * the next file (not folder) item in that tree, if there is one.
+   */
+  void stageOrUnstageSelection(TreeView *tree, bool stage);
   QAction *setupAppearanceAction(const char *name, Setting::Id id,
                                  bool defaultValue = false);
 

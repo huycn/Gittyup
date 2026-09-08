@@ -43,6 +43,17 @@ public:
    */
   int countCollapsed(QModelIndex parent = QModelIndex(), bool recursive = true);
   void updateView();
+  /*!
+   * \brief nextFileIndex
+   * Finds the file (leaf) item that follows the given selection in the
+   * model's tree order, skipping folders and any index that is itself part
+   * of \p selected. The current collapse state is ignored: folders are
+   * searched into even while collapsed. Ancestors of the found item are
+   * expanded so that it becomes visible.
+   * \param selected Indexes (column 0) currently selected, in any order
+   * \return The next file index, or an invalid index if there is none
+   */
+  QModelIndex nextFileIndex(const QModelIndexList &selected);
 public slots:
   /*!
    * \brief expandAll

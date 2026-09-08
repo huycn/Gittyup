@@ -8,9 +8,7 @@
 //
 
 #include "TreeView.h"
-#include "ColumnView.h"
 #include "ViewDelegate.h"
-#include "TreeModel.h"
 #include "Debug.h"
 #include <QFormLayout>
 #include <QItemDelegate>
@@ -24,8 +22,8 @@
 #include "RepoView.h"
 #include <QMessageBox>
 #include <QPushButton>
-#include "conf/Settings.h"
 #include <QAbstractItemModel>
+#include <QSet>
 #include <memory>
 
 #ifdef Q_OS_WIN
@@ -90,13 +88,11 @@ void TreeView::discard(const QModelIndex &index, const bool force) {
   auto m = qobject_cast<DiffTreeModel *>(p->sourceModel());
   assert(m);
   auto sIndex = p->mapToSource(index);
-  int patchIndex = sIndex.data(DiffTreeModel::Role::PatchIndexRole).toInt();
   QString name = sIndex.data(Qt::DisplayRole).toString();
 
   if (force)
     this->discard(m, sIndex);
   else {
-    QString arg = patchIndex < 0 ? tr("Directory") : tr("File");
     QString title = tr("Remove or discard %1?").arg(name);
     QString text =
         tr("Are you sure you want to remove or discard all changes in '%1'?")
@@ -172,8 +168,7 @@ void TreeView::handleSelectionChange(const QItemSelection &selected,
 
   // FIXME: The argument sent by Qt doesn't contain the whole selection.
   QModelIndexList indexes = selectionModel()->selectedIndexes();
-  if (indexes.count() > 0)
-    emit filesSelected(indexes);
+  emit filesSelected(indexes);
 
   // ignore deselection handling, because when selecting an item in the second
   // TreeView (staged/unstaged files), the root should not be set selected.
@@ -300,6 +295,74 @@ void TreeView::deselectAll() {
   suppressDeselectionHandling = true;
   selectionModel()->clearSelection();
   suppressDeselectionHandling = false;
+}
+
+namespace {
+
+/*!
+ * \brief modelIndexBelow
+ * Like QTreeView::indexBelow(), but walks the model's tree structure
+ * directly instead of the view's flattened (expansion-dependent) layout, so
+ * collapsed folders are still searched into.
+ */
+QModelIndex modelIndexBelow(const QAbstractItemModel *model,
+                            const QModelIndex &index) {
+  if (!index.isValid())
+    return QModelIndex();
+
+  if (model->rowCount(index) > 0)
+    return model->index(0, 0, index);
+
+  for (QModelIndex current = index; current.isValid();
+       current = current.parent()) {
+    QModelIndex parent = current.parent();
+    if (current.row() + 1 < model->rowCount(parent))
+      return model->index(current.row() + 1, 0, parent);
+  }
+
+  return QModelIndex();
+}
+
+} // namespace
+
+QModelIndex TreeView::nextFileIndex(const QModelIndexList &selected) {
+  if (selected.isEmpty() || !model())
+    return QModelIndex();
+
+  QAbstractItemModel *m = model();
+  QSet<QModelIndex> selectedSet(selected.begin(), selected.end());
+
+  // Find the last selected index in the model's tree (DFS) order, ignoring
+  // the current collapse state so folders don't hide the files inside them.
+  QModelIndex lastSelected;
+  QModelIndex idx = m->index(0, 0);
+  while (idx.isValid()) {
+    if (selectedSet.contains(idx))
+      lastSelected = idx;
+    idx = modelIndexBelow(m, idx);
+  }
+
+  if (!lastSelected.isValid())
+    return QModelIndex();
+
+  QModelIndex next = modelIndexBelow(m, lastSelected);
+  while (next.isValid() &&
+         (selectedSet.contains(next) || m->hasChildren(next)))
+    next = modelIndexBelow(m, next);
+
+  // Expand the ancestors of the found item, since it may be inside a
+  // folder that is currently collapsed, so that it becomes visible.
+  if (next.isValid()) {
+    QList<QModelIndex> ancestors;
+    for (QModelIndex parent = next.parent(); parent.isValid();
+         parent = parent.parent())
+      ancestors.prepend(parent);
+
+    for (const QModelIndex &ancestor : ancestors)
+      expand(ancestor);
+  }
+
+  return next;
 }
 
 QRect TreeView::checkRect(const QModelIndex &index) {
