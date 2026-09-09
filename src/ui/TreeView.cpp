@@ -104,7 +104,7 @@ void TreeView::discard(const QModelIndex &index, const bool force) {
 
     QPushButton *discard =
         dialog->addButton(tr("Discard"), QMessageBox::AcceptRole);
-    connect(discard, &QPushButton::clicked,
+    connect(discard, &QPushButton::clicked, this,
             [this, m, sIndex] { this->discard(m, sIndex); });
     dialog->exec();
   }

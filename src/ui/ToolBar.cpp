@@ -35,7 +35,7 @@ namespace {
 
 const int kButtonWidth = 36;
 const int kButtonHeight = 24;
-const int kToolBarHeight = 32;
+const int kToolBarHeight = 24;
 const QString kStarredQuery = "is:starred";
 const QString kStyleSheet = "QToolButton {"
                             "  border-radius: 4px;"

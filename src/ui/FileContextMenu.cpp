@@ -358,7 +358,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
           QString text = tr("Discard Changes");
           QPushButton *discard = dialog->addButton(text, QMessageBox::AcceptRole);
           discard->setObjectName("DiscardButton");
-          connect(discard, &QPushButton::clicked, this, [view, modified, submodules] {
+          connect(discard, &QPushButton::clicked, dialog, [view, modified, submodules] {
             git::Repository repo = view->repo();
             int strategy = GIT_CHECKOUT_FORCE;
             if (modified.count() &&

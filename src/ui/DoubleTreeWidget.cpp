@@ -39,6 +39,7 @@ const QString kStagedFiles = QString(QObject::tr("Staged Files"));
 const QString kUnstagedFiles = QString(QObject::tr("Unstaged Files"));
 const QString kCommitedFiles = QString(QObject::tr("Committed Files"));
 const QString kAllFiles = QString(QObject::tr("Workdir Files"));
+const int kPushButtonHeight = 26;
 
 class SegmentedButton : public QWidget {
 public:
@@ -87,8 +88,10 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   // top (Buttons to switch between Blame editor and DiffView)
   SegmentedButton *segmentedButton = new SegmentedButton(this);
   QPushButton *blameView = new QPushButton(tr("Blame"), this);
+  blameView->setFixedHeight(kPushButtonHeight);
   segmentedButton->addButton(blameView, tr("Show Blame Editor"), true);
   QPushButton *diffView = new QPushButton(tr("Diff"), this);
+  diffView->setFixedHeight(kPushButtonHeight);
   segmentedButton->addButton(diffView, tr("Show Diff View"), true);
 
   // Context button.
@@ -171,6 +174,7 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   unstageButton->setObjectName("UnstageSelectionButton");
   unstageButton->setToolTip(tr("Unstage the selected files"));
   unstageButton->setEnabled(false);
+  unstageButton->setFixedHeight(kPushButtonHeight);
   connect(unstageButton, &QPushButton::clicked, this,
           [this] { stageOrUnstageSelection(stagedFiles, false); });
   connect(stagedFiles, &TreeView::filesSelected, this, [unstageButton](const QModelIndexList &indexes) {
@@ -181,6 +185,7 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   hBoxLayout->addStretch();
   collapseButtonStagedFiles =
       new StatePushButton(kCollapseAll, kExpandAll, this);
+  collapseButtonStagedFiles->setFixedHeight(kPushButtonHeight);
   hBoxLayout->addWidget(collapseButtonStagedFiles);
 
   vBoxLayout->addLayout(hBoxLayout);
@@ -214,6 +219,7 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   stageButton->setObjectName("StageSelectionButton");
   stageButton->setToolTip(tr("Stage the selected files"));
   stageButton->setEnabled(false);
+  stageButton->setFixedHeight(kPushButtonHeight);
   connect(stageButton, &QPushButton::clicked, this,
           [this] { stageOrUnstageSelection(unstagedFiles, true); });
   connect(unstagedFiles, &TreeView::filesSelected, this, [stageButton](const QModelIndexList &indexes) {
@@ -224,6 +230,7 @@ DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
   hBoxLayout->addStretch();
   collapseButtonUnstagedFiles =
       new StatePushButton(kCollapseAll, kExpandAll, this);
+  collapseButtonUnstagedFiles->setFixedHeight(kPushButtonHeight);
   hBoxLayout->addWidget(collapseButtonUnstagedFiles);
 
   vBoxLayout->addLayout(hBoxLayout);
