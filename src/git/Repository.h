@@ -116,6 +116,12 @@ public:
                           Diff::Callbacks *callbacks = nullptr,
                           bool ignoreWhitespace = false) const;
 
+  // Same as diffIndexToWorkdir(), but marked as a status diff (see
+  // Diff::isStatusDiff()) so that consumers comparing against it (e.g.
+  // external diff tools) always fall back to the file on disk rather than
+  // expecting a workdir blob.
+  Diff diffIndexToWorkdirAsStatus(bool ignoreWhitespace = false) const;
+
   // refs
   QList<Reference> refs() const;
   Reference lookupRef(const QString &name) const;

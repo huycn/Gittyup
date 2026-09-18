@@ -126,12 +126,22 @@ ExternalTool *ExternalTool::create(const QString &file, const git::Diff &diff,
   }
 
   // Create diff tool.
+  git::Id remoteId = diff.id(index, git::Diff::NewFile);
   git::Blob local = repo.lookupBlob(diff.id(index, git::Diff::OldFile));
-  git::Blob remote = repo.lookupBlob(diff.id(index, git::Diff::NewFile));
+  git::Blob remote = repo.lookupBlob(remoteId);
+
   if (diff.isStatusDiff())
     return new DiffTool(path, local, parent);
-  else if (againstWorkingDir)
+  
+  if (againstWorkingDir)
     return new DiffTool(path, remote, parent);
-  else
-    return new DiffTool(path, local, remote, parent);
+
+  // If the new side of the diff is identical to the working copy (e.g. a
+  // fully-staged file, or the tip commit's version of an untouched file),
+  // hand the external tool the real file instead of a throwaway temp copy
+  // of the same content, so it can edit the working copy in place.
+  if (remote.isValid() && remoteId == repo.workdirId(file))
+    return new DiffTool(path, local, parent);
+
+  return new DiffTool(path, local, remote, parent);
 }

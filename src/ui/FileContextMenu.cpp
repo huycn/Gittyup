@@ -95,6 +95,40 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
   if (!diff.isValid())
     return;
 
+  const bool statusDiff = diff.isStatusDiff();
+
+  // For uncommitted changes, build the diff tool from the same diff that
+  // the internal diff view uses for this section (staged: tree vs. index,
+  // unstaged: index vs. working copy) instead of the merged status diff,
+  // which always compares HEAD to the working copy and ignores content
+  // that is already staged. See DiffView::loadStagedPatches().
+  git::Diff sectionDiff;
+  if (statusDiff) {
+    if (staged) {
+      if (git::Reference head = repo.head()) {
+        if (git::Commit commit = head.target())
+          sectionDiff = repo.diffTreeToIndex(commit.tree());
+      }
+    } else {
+      sectionDiff = repo.diffIndexToWorkdirAsStatus();
+    }
+  }
+
+  auto connectError = [this](ExternalTool *tool) {
+    connect(tool, &ExternalTool::error, this, [this](ExternalTool::Error error) {
+      if (error != ExternalTool::BashNotFound)
+        return;
+
+      QString title = tr("Bash Not Found");
+      QString text = tr("Bash was not found on your PATH.");
+      QMessageBox msg(QMessageBox::Warning, title, text, QMessageBox::Ok,
+                      this);
+      msg.setInformativeText(
+          tr("Bash is required to execute external tools."));
+      msg.exec();
+    });
+  };
+
   // Create external tools.
   QList<ExternalTool *> showTools;
   QList<ExternalTool *> editTools;
@@ -112,22 +146,39 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
     editTools.append(new EditTool(path, this));
 
     ExternalTool *tool = nullptr;
+
+    if (statusDiff) {
+      // Conflicted files only get a merge tool.
+      int deltaIndex = diff.indexOf(file);
+      bool conflicted =
+          deltaIndex >= 0 && diff.status(deltaIndex) == GIT_DELTA_CONFLICTED;
+
+      if (conflicted) {
+        if ((tool = ExternalTool::create(file, diff, repo, false, this))) {
+          Q_ASSERT(tool->kind() == ExternalTool::Merge);
+          mergeTools.append(tool);
+          connectError(tool);
+        }
+      } else if (sectionDiff.isValid()) {
+        // Staged: two-blob compare (HEAD vs. index), so pass
+        // againstWorkingDir = false. Unstaged: sectionDiff is marked as a
+        // status diff, so it always compares the index blob to the file
+        // on disk, regardless of againstWorkingDir.
+        if ((tool = ExternalTool::create(file, sectionDiff, repo, !staged,
+                                         this))) {
+          Q_ASSERT(tool->kind() == ExternalTool::Diff);
+          diffToLocalTools.append(tool);
+          connectError(tool);
+        }
+      }
+      continue;
+    }
+
     // Add diff to local
     if ((tool = ExternalTool::create(file, diff, repo, true, this))) {
       Q_ASSERT(tool->kind() == ExternalTool::Diff);
       diffToLocalTools.append(tool);
-      connect(tool, &ExternalTool::error, this, [this](ExternalTool::Error error) {
-        if (error != ExternalTool::BashNotFound)
-          return;
-
-        QString title = tr("Bash Not Found");
-        QString text = tr("Bash was not found on your PATH.");
-        QMessageBox msg(QMessageBox::Warning, title, text, QMessageBox::Ok,
-                        this);
-        msg.setInformativeText(
-            tr("Bash is required to execute external tools."));
-        msg.exec();
-      });
+      connectError(tool);
     }
 
     // Add diff or merge tool.
@@ -147,27 +198,23 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
           break;
       }
 
-      connect(tool, &ExternalTool::error, this, [this](ExternalTool::Error error) {
-        if (error != ExternalTool::BashNotFound)
-          return;
-
-        QString title = tr("Bash Not Found");
-        QString text = tr("Bash was not found on your PATH.");
-        QMessageBox msg(QMessageBox::Warning, title, text, QMessageBox::Ok,
-                        this);
-        msg.setInformativeText(
-            tr("Bash is required to execute external tools."));
-        msg.exec();
-      });
+      connectError(tool);
     }
   }
 
   // Add external tool actions.
   addExternalToolsAction(showTools);
   addExternalToolsAction(editTools);
-  addExternalToolsAction(diffTools);
-  mDoubleClickAction = addExternalToolsAction(diffToLocalTools);
+  QAction *diffAction = addExternalToolsAction(diffTools);
+  QAction *diffToLocalAction = addExternalToolsAction(diffToLocalTools);
   addExternalToolsAction(mergeTools);
+
+  // Bind double-click to whichever tool matches what the internal diff
+  // view is currently showing: for uncommitted changes that's the (only)
+  // diff-to-local tool built from the staged/unstaged section diff above;
+  // for a selected commit it's the plain two-blob diff against its
+  // parent, i.e. the same diff the internal view renders for that commit.
+  mDoubleClickAction = statusDiff ? diffToLocalAction : diffAction;
 
   if (!isEmpty())
     addSeparator();

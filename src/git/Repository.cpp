@@ -364,6 +364,12 @@ Diff Repository::diffIndexToWorkdir(const Index &index,
   return Diff(diff);
 }
 
+Diff Repository::diffIndexToWorkdirAsStatus(bool ignoreWhitespace) const {
+  Diff diff = diffIndexToWorkdir(Index(), nullptr, ignoreWhitespace);
+  diff.setIndex(index());
+  return diff;
+}
+
 Reference Repository::head() const {
   git_reference *ref = nullptr;
   git_repository_head(&ref, d->repo);
