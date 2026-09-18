@@ -14,6 +14,7 @@
 #include "conf/Settings.h"
 #include "dialogs/ThemeDialog.h"
 #include "ui/DiffView/DiffView.h"
+#include <QCoreApplication>
 #include <QProxyStyle>
 #include <QStyleOption>
 #include <QWidget>
@@ -40,27 +41,43 @@ Theme::Theme() {
   mDir = Settings::themesDir();
   mName = QString("System");
 
-  // Create Qt theme. Build the script in memory rather than through a
-  // shared temp file: the theme template is combined with a generated
-  // style.default line reflecting the live QPalette, then executed
-  // directly, so concurrent processes never contend over a fixed path.
+  // Create Qt theme. The template is combined with a generated
+  // style.default line reflecting the live QPalette. This augmented
+  // script is written to a per-process temp directory rather than a
+  // single shared temp file, so concurrent Gittyup instances never
+  // contend over the same path. A real file (as opposed to parsing the
+  // script from memory) is required here: the Scintilla LPeg lexer
+  // loads the theme file straight off disk by name, independently of
+  // this class (see TextEditor's lexer.lpeg.themes/lexer.lpeg.theme
+  // properties, which point at theme->dir()/theme->name()), so it needs
+  // to see the same palette-derived style.default too.
   QFile themeFile(mDir.filePath(QString("%1.lua").arg(mName)).toUtf8());
   if (themeFile.open(QIODevice::ReadOnly)) {
-    QByteArray source = themeFile.readAll();
+    QDir tempDir(QDir::temp().filePath(
+        QString("gittyup-theme-%1").arg(QCoreApplication::applicationPid())));
+    if (tempDir.mkpath(".")) {
+      QFile tempFile(tempDir.filePath(QString("%1.lua").arg(mName)));
+      if (tempFile.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
+        mDir = tempDir;
+
+        // Copy template.
+        tempFile.write(themeFile.readAll());
+
+        // Add theme colors for scintilla editor.
+        tempFile.write(
+            QString("theme.property['style.default']      = 'fore:%1,back:%2'\n")
+                .arg(QPalette().color(QPalette::Text).name(QColor::HexRgb),
+                     QPalette().color(QPalette::Base).name(QColor::HexRgb))
+                .toUtf8());
+        tempFile.close();
+      }
+    }
     themeFile.close();
-
-    // Add theme colors for scintilla editor.
-    source +=
-        QString("theme.property['style.default']      = 'fore:%1,back:%2'\n")
-            .arg(QPalette().color(QPalette::Text).name(QColor::HexRgb),
-                 QPalette().color(QPalette::Base).name(QColor::HexRgb))
-            .toUtf8();
-
-    mMap = ConfFile(source, mDir).parse("theme");
-  } else {
-    QByteArray file = mDir.filePath(QString("%1.lua").arg(mName)).toUtf8();
-    mMap = ConfFile(file).parse("theme");
   }
+
+  // Load Qt theme.
+  QByteArray file = mDir.filePath(QString("%1.lua").arg(mName)).toUtf8();
+  mMap = ConfFile(file).parse("theme");
 
   QPalette palette;
   QColor base = palette.color(QPalette::Base);
