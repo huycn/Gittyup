@@ -43,380 +43,402 @@ const int kPushButtonHeight = 26;
 
 class SegmentedButton : public QWidget {
 public:
-    SegmentedButton(QWidget *parent = nullptr)
-        : QWidget(parent)
-    {
-        mLayout = new QHBoxLayout(this);
-        mLayout->setContentsMargins(0, 0, 0, 0);
-        mLayout->setSpacing(0);
-    }
+  SegmentedButton(QWidget *parent = nullptr) : QWidget(parent) {
+    mLayout = new QHBoxLayout(this);
+    mLayout->setContentsMargins(0, 0, 0, 0);
+    mLayout->setSpacing(0);
+  }
 
-    void addButton(QAbstractButton *button, const QString &text = QString(), bool checkable = false)
-    {
-        button->setToolTip(text);
-        button->setCheckable(checkable);
+  void addButton(QAbstractButton *button, const QString &text = QString(),
+                 bool checkable = false) {
+    button->setToolTip(text);
+    button->setCheckable(checkable);
 
-        mLayout->addWidget(button);
-        mButtons.addButton(button, mButtons.buttons().size());
-    }
+    mLayout->addWidget(button);
+    mButtons.addButton(button, mButtons.buttons().size());
+  }
 
-    const QButtonGroup *buttonGroup() const { return &mButtons; }
+  const QButtonGroup *buttonGroup() const { return &mButtons; }
 
 private:
-    QHBoxLayout *mLayout;
-    QButtonGroup mButtons;
+  QHBoxLayout *mLayout;
+  QButtonGroup mButtons;
 };
 
 } // namespace
 
-QAction *DoubleTreeWidget::setupAppearanceAction(const char *name, Setting::Id id, bool defaultValue)
-{
-    QAction *action = new QAction(tr(name));
-    action->setCheckable(true);
-    action->setChecked(Settings::instance()->value(id, defaultValue).toBool());
-    connect(action, &QAction::triggered, this, [this, id](bool checked) {
-        Settings::instance()->setValue(id, checked);
-        mSelectedFile.filename = ""; // When switching view, it is not possible to restore
-        RepoView::parentView(this)->refresh();
-    });
-    return action;
+QAction *DoubleTreeWidget::setupAppearanceAction(const char *name,
+                                                 Setting::Id id,
+                                                 bool defaultValue) {
+  QAction *action = new QAction(tr(name));
+  action->setCheckable(true);
+  action->setChecked(Settings::instance()->value(id, defaultValue).toBool());
+  connect(action, &QAction::triggered, this, [this, id](bool checked) {
+    Settings::instance()->setValue(id, checked);
+    mSelectedFile.filename =
+        ""; // When switching view, it is not possible to restore
+    RepoView::parentView(this)->refresh();
+  });
+  return action;
 }
 
 DoubleTreeWidget::DoubleTreeWidget(const git::Repository &repo, QWidget *parent)
-    : ContentWidget(parent)
-{
-    // first column
-    // top (Buttons to switch between Blame editor and DiffView)
-    SegmentedButton *segmentedButton = new SegmentedButton(this);
-    QPushButton *blameView = new QPushButton(tr("Blame"), this);
-    blameView->setFixedHeight(kPushButtonHeight);
-    segmentedButton->addButton(blameView, tr("Show Blame Editor"), true);
-    QPushButton *diffView = new QPushButton(tr("Diff"), this);
-    diffView->setFixedHeight(kPushButtonHeight);
-    segmentedButton->addButton(diffView, tr("Show Diff View"), true);
+    : ContentWidget(parent) {
+  // first column
+  // top (Buttons to switch between Blame editor and DiffView)
+  SegmentedButton *segmentedButton = new SegmentedButton(this);
+  QPushButton *blameView = new QPushButton(tr("Blame"), this);
+  blameView->setFixedHeight(kPushButtonHeight);
+  segmentedButton->addButton(blameView, tr("Show Blame Editor"), true);
+  QPushButton *diffView = new QPushButton(tr("Diff"), this);
+  diffView->setFixedHeight(kPushButtonHeight);
+  segmentedButton->addButton(diffView, tr("Show Diff View"), true);
 
-    // Context button.
-    ContextMenuButton *contextButton = new ContextMenuButton(this);
-    QMenu *contextMenu = new QMenu(this);
-    contextButton->setMenu(contextMenu);
+  // Context button.
+  ContextMenuButton *contextButton = new ContextMenuButton(this);
+  QMenu *contextMenu = new QMenu(this);
+  contextButton->setMenu(contextMenu);
 
-    QAction *singleTree = setupAppearanceAction("Single View", Setting::Id::ShowChangedFilesInSingleView);
-    QAction *listView = setupAppearanceAction("List View", Setting::Id::ShowChangedFilesAsList);
-    QAction *multiColumn = setupAppearanceAction("Multi Column", Setting::Id::ShowChangedFilesMultiColumn, true);
-    RepoView::parentView(this)->refresh(); // apply read settings
+  QAction *singleTree = setupAppearanceAction(
+      "Single View", Setting::Id::ShowChangedFilesInSingleView);
+  QAction *listView =
+      setupAppearanceAction("List View", Setting::Id::ShowChangedFilesAsList);
+  QAction *multiColumn = setupAppearanceAction(
+      "Multi Column", Setting::Id::ShowChangedFilesMultiColumn, true);
+  RepoView::parentView(this)->refresh(); // apply read settings
 
-    QAction *hideUntrackedFiles = setupAppearanceAction("Hide Untracked Files", Setting::Id::HideUntracked, false);
+  QAction *hideUntrackedFiles = setupAppearanceAction(
+      "Hide Untracked Files", Setting::Id::HideUntracked, false);
 
-    contextMenu->addAction(singleTree);
-    contextMenu->addAction(listView);
-    contextMenu->addAction(multiColumn);
-    contextMenu->addAction(hideUntrackedFiles);
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(segmentedButton);
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(contextButton);
+  contextMenu->addAction(singleTree);
+  contextMenu->addAction(listView);
+  contextMenu->addAction(multiColumn);
+  contextMenu->addAction(hideUntrackedFiles);
+  QHBoxLayout *buttonLayout = new QHBoxLayout();
+  buttonLayout->addStretch();
+  buttonLayout->addWidget(segmentedButton);
+  buttonLayout->addStretch();
+  buttonLayout->addWidget(contextButton);
 
-    // bottom (Stacked widget with Blame editor and DiffView)
-    QVBoxLayout *fileViewLayout = new QVBoxLayout();
-    mFileView = new QStackedWidget(this);
-    mEditor = new BlameEditor(repo, this);
-    mDiffView = new DiffView(repo, this);
-    mFileView->addWidget(mEditor);
-    mFileView->addWidget(mDiffView);
+  // bottom (Stacked widget with Blame editor and DiffView)
+  QVBoxLayout *fileViewLayout = new QVBoxLayout();
+  mFileView = new QStackedWidget(this);
+  mEditor = new BlameEditor(repo, this);
+  mDiffView = new DiffView(repo, this);
+  mFileView->addWidget(mEditor);
+  mFileView->addWidget(mDiffView);
 
-    fileViewLayout->addLayout(buttonLayout);
-    fileViewLayout->addWidget(mFileView);
-    mFileView->setCurrentIndex(DoubleTreeWidget::Diff);
-    mFileView->show();
-    QWidget *fileView = new QWidget(this);
-    fileView->setLayout(fileViewLayout);
+  fileViewLayout->addLayout(buttonLayout);
+  fileViewLayout->addWidget(mFileView);
+  mFileView->setCurrentIndex(DoubleTreeWidget::Diff);
+  mFileView->show();
+  QWidget *fileView = new QWidget(this);
+  fileView->setLayout(fileViewLayout);
 
-    auto *repoView = qobject_cast<RepoView *>(parent->parent());
+  auto *repoView = qobject_cast<RepoView *>(parent->parent());
 
-    // second column
-    // staged files
-    QVBoxLayout *vBoxLayout = new QVBoxLayout();
-    stagedFiles = new TreeView(this, "Staged");
-    stagedFiles->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
-    stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    stagedFiles->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(stagedFiles, &QWidget::customContextMenuRequested, this, [this, repoView](const QPoint &pos) {
-        showFileContextMenu(pos, repoView, stagedFiles, true);
-    });
+  // second column
+  // staged files
+  QVBoxLayout *vBoxLayout = new QVBoxLayout();
+  stagedFiles = new TreeView(this, "Staged");
+  stagedFiles->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
+  stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+  stagedFiles->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(stagedFiles, &QWidget::customContextMenuRequested, this,
+          [this, repoView](const QPoint &pos) {
+            showFileContextMenu(pos, repoView, stagedFiles, true);
+          });
 
-    mDiffTreeModel = new DiffTreeModel(repo, this);
-    mDiffView->setModel(mDiffTreeModel);
-    Q_ASSERT(repoView);
-    connect(mDiffTreeModel, &DiffTreeModel::updateSubmodules, this, [repoView](const QList<git::Submodule> &submodules, bool recursive, bool init, bool force_checkout) {
-        repoView->updateSubmodules(submodules, recursive, init, force_checkout);
-    });
+  mDiffTreeModel = new DiffTreeModel(repo, this);
+  mDiffView->setModel(mDiffTreeModel);
+  Q_ASSERT(repoView);
+  connect(mDiffTreeModel, &DiffTreeModel::updateSubmodules, this,
+          [repoView](const QList<git::Submodule> &submodules, bool recursive,
+                     bool init, bool force_checkout) {
+            repoView->updateSubmodules(submodules, recursive, init,
+                                       force_checkout);
+          });
 
-    stagedFiles->setModel(new TreeProxy(true, mDiffTreeModel, this));
-    connect(stagedFiles, &QAbstractItemView::doubleClicked, this, [this, repoView](const QModelIndex &index) {
-        openExternalDiffTool(index, repoView, true);
-    });
+  stagedFiles->setModel(new TreeProxy(true, mDiffTreeModel, this));
+  connect(stagedFiles, &QAbstractItemView::doubleClicked, this,
+          [this, repoView](const QModelIndex &index) {
+            openExternalDiffTool(index, repoView, true);
+          });
 
-    QHBoxLayout *hBoxLayout = new QHBoxLayout();
-    QLabel *label = new QLabel(kStagedFiles);
-    hBoxLayout->addWidget(label);
-    hBoxLayout->addStretch();
+  QHBoxLayout *hBoxLayout = new QHBoxLayout();
+  QLabel *label = new QLabel(kStagedFiles);
+  hBoxLayout->addWidget(label);
+  hBoxLayout->addStretch();
 
-    QPushButton *unstageButton = new QPushButton(tr("Unstage"), this);
-    unstageButton->setObjectName("UnstageSelectionButton");
-    unstageButton->setToolTip(tr("Unstage the selected files"));
-    unstageButton->setEnabled(false);
-    unstageButton->setFixedHeight(kPushButtonHeight);
-    connect(unstageButton, &QPushButton::clicked, this, [this] {
-        stageOrUnstageSelection(stagedFiles, false);
-    });
-    connect(stagedFiles, &TreeView::filesSelected, this, [unstageButton](const QModelIndexList &indexes) {
-        unstageButton->setEnabled(!indexes.isEmpty());
-    });
-    hBoxLayout->addWidget(unstageButton);
+  QPushButton *unstageButton = new QPushButton(tr("Unstage"), this);
+  unstageButton->setObjectName("UnstageSelectionButton");
+  unstageButton->setToolTip(tr("Unstage the selected files"));
+  unstageButton->setEnabled(false);
+  unstageButton->setFixedHeight(kPushButtonHeight);
+  connect(unstageButton, &QPushButton::clicked, this,
+          [this] { stageOrUnstageSelection(stagedFiles, false); });
+  connect(stagedFiles, &TreeView::filesSelected, this,
+          [unstageButton](const QModelIndexList &indexes) {
+            unstageButton->setEnabled(!indexes.isEmpty());
+          });
+  hBoxLayout->addWidget(unstageButton);
 
-    hBoxLayout->addStretch();
-    collapseButtonStagedFiles = new StatePushButton(kCollapseAll, kExpandAll, this);
-    collapseButtonStagedFiles->setFixedHeight(kPushButtonHeight);
-    hBoxLayout->addWidget(collapseButtonStagedFiles);
+  hBoxLayout->addStretch();
+  collapseButtonStagedFiles =
+      new StatePushButton(kCollapseAll, kExpandAll, this);
+  collapseButtonStagedFiles->setFixedHeight(kPushButtonHeight);
+  hBoxLayout->addWidget(collapseButtonStagedFiles);
 
-    vBoxLayout->addLayout(hBoxLayout);
-    vBoxLayout->addWidget(stagedFiles);
-    mStagedWidget = new QWidget();
-    mStagedWidget->setLayout(vBoxLayout);
+  vBoxLayout->addLayout(hBoxLayout);
+  vBoxLayout->addWidget(stagedFiles);
+  mStagedWidget = new QWidget();
+  mStagedWidget->setLayout(vBoxLayout);
 
-    // unstaged files
-    vBoxLayout = new QVBoxLayout();
-    unstagedFiles = new TreeView(this, "Unstaged");
-    unstagedFiles->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
-    unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    unstagedFiles->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(unstagedFiles, &QWidget::customContextMenuRequested, this, [this, repoView](const QPoint &pos) {
-        showFileContextMenu(pos, repoView, unstagedFiles, false);
-    });
+  // unstaged files
+  vBoxLayout = new QVBoxLayout();
+  unstagedFiles = new TreeView(this, "Unstaged");
+  unstagedFiles->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
+  unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+  unstagedFiles->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(unstagedFiles, &QWidget::customContextMenuRequested, this,
+          [this, repoView](const QPoint &pos) {
+            showFileContextMenu(pos, repoView, unstagedFiles, false);
+          });
 
-    unstagedFiles->setModel(new TreeProxy(false, mDiffTreeModel, this));
-    connect(unstagedFiles, &QAbstractItemView::doubleClicked, this, [this, repoView](const QModelIndex &index) {
-        openExternalDiffTool(index, repoView, false);
-    });
+  unstagedFiles->setModel(new TreeProxy(false, mDiffTreeModel, this));
+  connect(unstagedFiles, &QAbstractItemView::doubleClicked, this,
+          [this, repoView](const QModelIndex &index) {
+            openExternalDiffTool(index, repoView, false);
+          });
 
-    hBoxLayout = new QHBoxLayout();
-    mUnstagedCommitedFiles = new QLabel(kUnstagedFiles);
-    hBoxLayout->addWidget(mUnstagedCommitedFiles);
-    hBoxLayout->addStretch();
+  hBoxLayout = new QHBoxLayout();
+  mUnstagedCommitedFiles = new QLabel(kUnstagedFiles);
+  hBoxLayout->addWidget(mUnstagedCommitedFiles);
+  hBoxLayout->addStretch();
 
-    QPushButton *stageButton = new QPushButton(tr("Stage"), this);
-    stageButton->setObjectName("StageSelectionButton");
-    stageButton->setToolTip(tr("Stage the selected files"));
-    stageButton->setEnabled(false);
-    stageButton->setFixedHeight(kPushButtonHeight);
-    connect(stageButton, &QPushButton::clicked, this, [this] {
-        stageOrUnstageSelection(unstagedFiles, true);
-    });
-    connect(unstagedFiles, &TreeView::filesSelected, this, [stageButton](const QModelIndexList &indexes) {
-        stageButton->setEnabled(!indexes.isEmpty());
-    });
-    hBoxLayout->addWidget(stageButton);
+  QPushButton *stageButton = new QPushButton(tr("Stage"), this);
+  stageButton->setObjectName("StageSelectionButton");
+  stageButton->setToolTip(tr("Stage the selected files"));
+  stageButton->setEnabled(false);
+  stageButton->setFixedHeight(kPushButtonHeight);
+  connect(stageButton, &QPushButton::clicked, this,
+          [this] { stageOrUnstageSelection(unstagedFiles, true); });
+  connect(unstagedFiles, &TreeView::filesSelected, this,
+          [stageButton](const QModelIndexList &indexes) {
+            stageButton->setEnabled(!indexes.isEmpty());
+          });
+  hBoxLayout->addWidget(stageButton);
 
-    hBoxLayout->addStretch();
-    collapseButtonUnstagedFiles = new StatePushButton(kCollapseAll, kExpandAll, this);
-    collapseButtonUnstagedFiles->setFixedHeight(kPushButtonHeight);
-    hBoxLayout->addWidget(collapseButtonUnstagedFiles);
+  hBoxLayout->addStretch();
+  collapseButtonUnstagedFiles =
+      new StatePushButton(kCollapseAll, kExpandAll, this);
+  collapseButtonUnstagedFiles->setFixedHeight(kPushButtonHeight);
+  hBoxLayout->addWidget(collapseButtonUnstagedFiles);
 
-    vBoxLayout->addLayout(hBoxLayout);
-    vBoxLayout->addWidget(unstagedFiles);
-    QWidget *unstagedWidget = new QWidget();
-    unstagedWidget->setLayout(vBoxLayout);
+  vBoxLayout->addLayout(hBoxLayout);
+  vBoxLayout->addWidget(unstagedFiles);
+  QWidget *unstagedWidget = new QWidget();
+  unstagedWidget->setLayout(vBoxLayout);
 
-    // splitter between the staged and unstaged section
-    QSplitter *treeViewSplitter = new QSplitter(Qt::Vertical, this);
-    treeViewSplitter->setHandleWidth(10);
-    treeViewSplitter->addWidget(mStagedWidget);
-    treeViewSplitter->addWidget(unstagedWidget);
-    treeViewSplitter->setStretchFactor(0, 0);
-    treeViewSplitter->setStretchFactor(1, 1);
+  // splitter between the staged and unstaged section
+  QSplitter *treeViewSplitter = new QSplitter(Qt::Vertical, this);
+  treeViewSplitter->setHandleWidth(10);
+  treeViewSplitter->addWidget(mStagedWidget);
+  treeViewSplitter->addWidget(unstagedWidget);
+  treeViewSplitter->setStretchFactor(0, 0);
+  treeViewSplitter->setStretchFactor(1, 1);
 
-    // splitter between editor/diffview and TreeViews
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
-    splitter->setHandleWidth(0);
-    splitter->addWidget(treeViewSplitter);
-    splitter->addWidget(fileView);
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 3);
-    // prevent that diffview will be collapsed
-    // The problem is that the diffview is between two splitters
-    // and if the diffview is collapsed only the splitter of the
-    // commitlist is visible and is is not possible to get the
-    // diffview visible again.
-    splitter->setCollapsible(0, false);
-    connect(splitter, &QSplitter::splitterMoved, this, [splitter] {
-        QSettings().setValue(kSplitterKey, splitter->saveState());
-    });
+  // splitter between editor/diffview and TreeViews
+  QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
+  splitter->setHandleWidth(0);
+  splitter->addWidget(treeViewSplitter);
+  splitter->addWidget(fileView);
+  splitter->setStretchFactor(0, 1);
+  splitter->setStretchFactor(1, 3);
+  // prevent that diffview will be collapsed
+  // The problem is that the diffview is between two splitters
+  // and if the diffview is collapsed only the splitter of the
+  // commitlist is visible and is is not possible to get the
+  // diffview visible again.
+  splitter->setCollapsible(0, false);
+  connect(splitter, &QSplitter::splitterMoved, this, [splitter] {
+    QSettings().setValue(kSplitterKey, splitter->saveState());
+  });
 
-    // Restore splitter state.
-    splitter->restoreState(QSettings().value(kSplitterKey).toByteArray());
+  // Restore splitter state.
+  splitter->restoreState(QSettings().value(kSplitterKey).toByteArray());
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(splitter);
+  QVBoxLayout *layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->addWidget(splitter);
 
-    setLayout(layout);
+  setLayout(layout);
 
-    const QButtonGroup *viewGroup = segmentedButton->buttonGroup();
+  const QButtonGroup *viewGroup = segmentedButton->buttonGroup();
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 15, 0))
-    connect(viewGroup, QOverload<int>::of(&QButtonGroup::idClicked), this, [this](int id) {
+  connect(
+      viewGroup, QOverload<int>::of(&QButtonGroup::idClicked), this,
+      [this](int id) {
         mFileView->setCurrentIndex(id);
         // Change selection mode.
         if (id == Blame) {
-            stagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
-            unstagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
+          stagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
+          unstagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
         } else {
-            stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
-            unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+          stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+          unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
         }
-    });
+      });
 #else
-    connect(viewGroup, QOverload<QAbstractButton *>::of(&QButtonGroup::buttonClicked), [this, viewGroup](QAbstractButton *button) {
+  connect(
+      viewGroup, QOverload<QAbstractButton *>::of(&QButtonGroup::buttonClicked),
+      [this, viewGroup](QAbstractButton *button) {
         mFileView->setCurrentIndex(viewGroup->id(button));
         // Change selection mode.
         if (viewGroup->id(button) == Blame) {
-            stagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
-            unstagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
+          stagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
+          unstagedFiles->setSelectionMode(QAbstractItemView::SingleSelection);
         } else {
-            stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
-            unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+          stagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
+          unstagedFiles->setSelectionMode(QAbstractItemView::ExtendedSelection);
         }
-    });
+      });
 #endif
 
-    connect(mDiffTreeModel, &DiffTreeModel::checkStateChanged, this, &DoubleTreeWidget::treeModelStateChanged);
+  connect(mDiffTreeModel, &DiffTreeModel::checkStateChanged, this,
+          &DoubleTreeWidget::treeModelStateChanged);
 
-    connect(stagedFiles, &TreeView::filesSelected, this, &DoubleTreeWidget::filesSelected);
-    connect(stagedFiles, &TreeView::collapseCountChanged, this, &DoubleTreeWidget::collapseCountChanged);
+  connect(stagedFiles, &TreeView::filesSelected, this,
+          &DoubleTreeWidget::filesSelected);
+  connect(stagedFiles, &TreeView::collapseCountChanged, this,
+          &DoubleTreeWidget::collapseCountChanged);
 
-    connect(unstagedFiles, &TreeView::filesSelected, this, &DoubleTreeWidget::filesSelected);
-    connect(unstagedFiles, &TreeView::collapseCountChanged, this, &DoubleTreeWidget::collapseCountChanged);
+  connect(unstagedFiles, &TreeView::filesSelected, this,
+          &DoubleTreeWidget::filesSelected);
+  connect(unstagedFiles, &TreeView::collapseCountChanged, this,
+          &DoubleTreeWidget::collapseCountChanged);
 
-    connect(collapseButtonStagedFiles, &StatePushButton::clicked, this, &DoubleTreeWidget::toggleCollapseStagedFiles);
-    connect(collapseButtonUnstagedFiles, &StatePushButton::clicked, this, &DoubleTreeWidget::toggleCollapseUnstagedFiles);
+  connect(collapseButtonStagedFiles, &StatePushButton::clicked, this,
+          &DoubleTreeWidget::toggleCollapseStagedFiles);
+  connect(collapseButtonUnstagedFiles, &StatePushButton::clicked, this,
+          &DoubleTreeWidget::toggleCollapseUnstagedFiles);
 
-    connect(repo.notifier(), &git::RepositoryNotifier::indexChanged, this, [this](const QStringList &paths) {
-        mDiffTreeModel->refresh(paths);
-    });
+  connect(repo.notifier(), &git::RepositoryNotifier::indexChanged, this,
+          [this](const QStringList &paths) { mDiffTreeModel->refresh(paths); });
 
-    RepoView *view = RepoView::parentView(this);
-    connect(mEditor, &BlameEditor::linkActivated, view, &RepoView::visitLink);
+  RepoView *view = RepoView::parentView(this);
+  connect(mEditor, &BlameEditor::linkActivated, view, &RepoView::visitLink);
 }
 
-QModelIndex DoubleTreeWidget::selectedIndex() const
-{
-    TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
-    QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
-    if (!indexes.isEmpty()) {
-        return proxy->mapToSource(indexes.first());
-    }
+QModelIndex DoubleTreeWidget::selectedIndex() const {
+  TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
+  QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
+  if (!indexes.isEmpty()) {
+    return proxy->mapToSource(indexes.first());
+  }
 
-    indexes = unstagedFiles->selectionModel()->selectedIndexes();
-    proxy = static_cast<TreeProxy *>(unstagedFiles->model());
-    if (!indexes.isEmpty()) {
-        return proxy->mapToSource(indexes.first());
-    }
-    return QModelIndex();
+  indexes = unstagedFiles->selectionModel()->selectedIndexes();
+  proxy = static_cast<TreeProxy *>(unstagedFiles->model());
+  if (!indexes.isEmpty()) {
+    return proxy->mapToSource(indexes.first());
+  }
+  return QModelIndex();
 }
 
-static void addNodeToMenu(const git::Index &index, QStringList &files, const Node *node, bool staged, bool statusDiff)
-{
-    Debug("DoubleTreeWidgetr addNodeToMenu()" << node->name());
+static void addNodeToMenu(const git::Index &index, QStringList &files,
+                          const Node *node, bool staged, bool statusDiff) {
+  Debug("DoubleTreeWidgetr addNodeToMenu()" << node->name());
 
-    if (node->hasChildren()) {
-        for (auto &child : node->children()) {
-            addNodeToMenu(index, files, child, staged, statusDiff);
-        }
-
-    } else {
-        auto path = node->path(true);
-
-        auto stageState = index.isStaged(path);
-
-        if ((staged && stageState != git::Index::Unstaged) || (!staged && stageState != git::Index::Staged) || !statusDiff) {
-            files.append(path);
-        }
-    }
-}
-
-void DoubleTreeWidget::showFileContextMenu(const QPoint &pos, RepoView *view, QTreeView *tree, bool staged)
-{
-    QStringList files;
-    QModelIndexList indexes = tree->selectionModel()->selectedIndexes();
-    const auto diff = view->diff();
-    if (!diff.isValid())
-        return;
-
-    const bool statusDiff = diff.isStatusDiff();
-    foreach (const QModelIndex &index, indexes) {
-        auto node = index.data(Qt::UserRole).value<Node *>();
-
-        addNodeToMenu(view->repo().index(), files, node, staged, statusDiff);
+  if (node->hasChildren()) {
+    for (auto &child : node->children()) {
+      addNodeToMenu(index, files, child, staged, statusDiff);
     }
 
-    if (files.isEmpty())
-        return;
+  } else {
+    auto path = node->path(true);
 
-    auto menu = new FileContextMenu(view, files, git::Index(), tree, staged);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-    menu->popup(tree->mapToGlobal(pos));
+    auto stageState = index.isStaged(path);
+
+    if ((staged && stageState != git::Index::Unstaged) ||
+        (!staged && stageState != git::Index::Staged) || !statusDiff) {
+      files.append(path);
+    }
+  }
 }
 
-void DoubleTreeWidget::openExternalDiffTool(const QModelIndex &index, RepoView *view, bool staged)
-{
-    const auto diff = view->diff();
-    if (!diff.isValid())
-        return;
+void DoubleTreeWidget::showFileContextMenu(const QPoint &pos, RepoView *view,
+                                           QTreeView *tree, bool staged) {
+  QStringList files;
+  QModelIndexList indexes = tree->selectionModel()->selectedIndexes();
+  const auto diff = view->diff();
+  if (!diff.isValid())
+    return;
 
-    const bool statusDiff = diff.isStatusDiff();
-    QStringList files;
+  const bool statusDiff = diff.isStatusDiff();
+  foreach (const QModelIndex &index, indexes) {
     auto node = index.data(Qt::UserRole).value<Node *>();
+
     addNodeToMenu(view->repo().index(), files, node, staged, statusDiff);
-    if (files.isEmpty())
-        return;
+  }
 
-    FileContextMenu fileMenu(view, files, git::Index(), nullptr, staged);
-    auto doubleClickAction = fileMenu.doubleClickAction();
-    if (doubleClickAction)
-        doubleClickAction->trigger();
+  if (files.isEmpty())
+    return;
+
+  auto menu = new FileContextMenu(view, files, git::Index(), tree, staged);
+  menu->setAttribute(Qt::WA_DeleteOnClose);
+  menu->popup(tree->mapToGlobal(pos));
 }
 
-QList<QModelIndex> DoubleTreeWidget::selectedIndices() const
-{
-    QList<QModelIndex> list;
+void DoubleTreeWidget::openExternalDiffTool(const QModelIndex &index,
+                                            RepoView *view, bool staged) {
+  const auto diff = view->diff();
+  if (!diff.isValid())
+    return;
 
-    TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
-    QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
-    for (auto &index : indexes)
-        list.append(proxy->mapToSource(index));
+  const bool statusDiff = diff.isStatusDiff();
+  QStringList files;
+  auto node = index.data(Qt::UserRole).value<Node *>();
+  addNodeToMenu(view->repo().index(), files, node, staged, statusDiff);
+  if (files.isEmpty())
+    return;
 
-    proxy = static_cast<TreeProxy *>(unstagedFiles->model());
-    indexes = unstagedFiles->selectionModel()->selectedIndexes();
-    for (auto &index : indexes)
-        list.append(proxy->mapToSource(index));
-
-    return list;
+  FileContextMenu fileMenu(view, files, git::Index(), nullptr, staged);
+  auto doubleClickAction = fileMenu.doubleClickAction();
+  if (doubleClickAction)
+    doubleClickAction->trigger();
 }
 
-bool DoubleTreeWidget::isStagedSelection() const { return stagedFiles->selectionModel()->hasSelection(); }
+QList<QModelIndex> DoubleTreeWidget::selectedIndices() const {
+  QList<QModelIndex> list;
 
-QString DoubleTreeWidget::selectedFile() const
-{
-    QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
-    if (!indexes.isEmpty()) {
-        return indexes.first().data(Qt::DisplayRole).toString();
-    }
+  TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
+  QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
+  for (auto &index : indexes)
+    list.append(proxy->mapToSource(index));
 
-    indexes = unstagedFiles->selectionModel()->selectedIndexes();
-    if (!indexes.isEmpty()) {
-        return indexes.first().data(Qt::DisplayRole).toString();
-    }
-    return "";
+  proxy = static_cast<TreeProxy *>(unstagedFiles->model());
+  indexes = unstagedFiles->selectionModel()->selectedIndexes();
+  for (auto &index : indexes)
+    list.append(proxy->mapToSource(index));
+
+  return list;
+}
+
+bool DoubleTreeWidget::isStagedSelection() const {
+  return stagedFiles->selectionModel()->hasSelection();
+}
+
+QString DoubleTreeWidget::selectedFile() const {
+  QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
+  if (!indexes.isEmpty()) {
+    return indexes.first().data(Qt::DisplayRole).toString();
+  }
+
+  indexes = unstagedFiles->selectionModel()->selectedIndexes();
+  if (!indexes.isEmpty()) {
+    return indexes.first().data(Qt::DisplayRole).toString();
+  }
+  return "";
 }
 
 /*!
@@ -425,77 +447,87 @@ QString DoubleTreeWidget::selectedFile() const
  * \param file
  * \param pathspec
  */
-void DoubleTreeWidget::setDiff(const git::Diff &diff, const QString &file, const QString &pathspec)
-{
-    Q_UNUSED(file)
-    Q_UNUSED(pathspec)
+void DoubleTreeWidget::setDiff(const git::Diff &diff, const QString &file,
+                               const QString &pathspec) {
+  Q_UNUSED(file)
+  Q_UNUSED(pathspec)
 
-    mSetDiffCounter++;
+  mSetDiffCounter++;
 
-    DebugRefresh("time: " << QDateTime::currentDateTime() << "Counter: " << mSetDiffCounter);
+  DebugRefresh("time: " << QDateTime::currentDateTime()
+                        << "Counter: " << mSetDiffCounter);
 
-    mDiff = diff;
+  mDiff = diff;
 
-    // Remember selection.
-    storeSelection();
+  // Remember selection.
+  storeSelection();
 
-    // Reset model.
-    // because of this, the content in the view is shown.
-    TreeProxy *proxy = static_cast<TreeProxy *>(unstagedFiles->model());
-    DiffTreeModel *model = static_cast<DiffTreeModel *>(proxy->sourceModel());
-    model->setDiff(diff);
+  // Reset model.
+  // because of this, the content in the view is shown.
+  TreeProxy *proxy = static_cast<TreeProxy *>(unstagedFiles->model());
+  DiffTreeModel *model = static_cast<DiffTreeModel *>(proxy->sourceModel());
+  model->setDiff(diff);
 
-    // Single tree & list view.
-    bool singleTree = Settings::instance()->value(Setting::Id::ShowChangedFilesInSingleView, false).toBool();
-    bool listView = Settings::instance()->value(Setting::Id::ShowChangedFilesAsList, false).toBool();
-    const bool multiColumn = Settings::instance()->value(Setting::Id::ShowChangedFilesMultiColumn, true).toBool();
+  // Single tree & list view.
+  bool singleTree =
+      Settings::instance()
+          ->value(Setting::Id::ShowChangedFilesInSingleView, false)
+          .toBool();
+  bool listView = Settings::instance()
+                      ->value(Setting::Id::ShowChangedFilesAsList, false)
+                      .toBool();
+  const bool multiColumn =
+      Settings::instance()
+          ->value(Setting::Id::ShowChangedFilesMultiColumn, true)
+          .toBool();
 
-    // Widget modifications.
-    model->enableListView(listView);
-    model->setMultiColumn(multiColumn);
-    stagedFiles->setRootIsDecorated(!listView);
-    unstagedFiles->setRootIsDecorated(!listView);
-    // mUnstagedCommitedFiles->setVisible(!singleTree);
-    collapseButtonStagedFiles->setVisible(!listView);
-    collapseButtonUnstagedFiles->setVisible(!listView);
+  // Widget modifications.
+  model->enableListView(listView);
+  model->setMultiColumn(multiColumn);
+  stagedFiles->setRootIsDecorated(!listView);
+  unstagedFiles->setRootIsDecorated(!listView);
+  // mUnstagedCommitedFiles->setVisible(!singleTree);
+  collapseButtonStagedFiles->setVisible(!listView);
+  collapseButtonUnstagedFiles->setVisible(!listView);
 
-    unstagedFiles->updateView(); // Must be before expandAll/collapseAll is done,
-                                 // otherwise the collapse counter is wrong
-    stagedFiles->updateView();
+  unstagedFiles->updateView(); // Must be before expandAll/collapseAll is done,
+                               // otherwise the collapse counter is wrong
+  stagedFiles->updateView();
 
-    // If statusDiff, there exist no staged/unstaged, but only
-    // the commited files must be shown
-    if (!diff.isValid() || diff.isStatusDiff()) {
-        mUnstagedCommitedFiles->setText(singleTree ? kAllFiles : kUnstagedFiles);
-        if (diff.isValid() && diff.count() < fileCountExpansionThreshold)
-            stagedFiles->expandAll();
-        else
-            stagedFiles->collapseAll();
-
-        proxy->enableFilter(!singleTree);
-        mStagedWidget->setVisible(!singleTree);
-    } else {
-        mUnstagedCommitedFiles->setText(kCommitedFiles);
-        mStagedWidget->setVisible(false);
-    }
-
-    // do not expand if to many files exist, it takes really long
-    // So do it only when there are less than 100
+  // If statusDiff, there exist no staged/unstaged, but only
+  // the commited files must be shown
+  if (!diff.isValid() || diff.isStatusDiff()) {
+    mUnstagedCommitedFiles->setText(singleTree ? kAllFiles : kUnstagedFiles);
     if (diff.isValid() && diff.count() < fileCountExpansionThreshold)
-        unstagedFiles->expandAll();
+      stagedFiles->expandAll();
     else
-        unstagedFiles->collapseAll();
+      stagedFiles->collapseAll();
 
-    // Clear editor.
-    mEditor->clear();
+    proxy->enableFilter(!singleTree);
+    mStagedWidget->setVisible(!singleTree);
+  } else {
+    mUnstagedCommitedFiles->setText(kCommitedFiles);
+    mStagedWidget->setVisible(false);
+  }
 
-    mDiffView->setDiff(diff);
+  // do not expand if to many files exist, it takes really long
+  // So do it only when there are less than 100
+  if (diff.isValid() && diff.count() < fileCountExpansionThreshold)
+    unstagedFiles->expandAll();
+  else
+    unstagedFiles->collapseAll();
 
-    // Restore selection.
-    if (diff.isValid())
-        loadSelection();
+  // Clear editor.
+  mEditor->clear();
 
-    DebugRefresh("finished, time: " << QDateTime::currentDateTime() << "Counter: " << mSetDiffCounter);
+  mDiffView->setDiff(diff);
+
+  // Restore selection.
+  if (diff.isValid())
+    loadSelection();
+
+  DebugRefresh("finished, time: " << QDateTime::currentDateTime()
+                                  << "Counter: " << mSetDiffCounter);
 }
 
 void DoubleTreeWidget::find() { mEditor->find(); }
@@ -506,193 +538,200 @@ void DoubleTreeWidget::findPrevious() { mEditor->findPrevious(); }
 
 void DoubleTreeWidget::cancelBackgroundTasks() { mEditor->cancelBlame(); }
 
-void DoubleTreeWidget::storeSelection()
-{
-    QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
-    if (!indexes.isEmpty()) {
-        mSelectedFile.filename = indexes.first().data(Qt::EditRole).toString();
-        mSelectedFile.stagedModel = true;
-        return;
-    }
+void DoubleTreeWidget::storeSelection() {
+  QModelIndexList indexes = stagedFiles->selectionModel()->selectedIndexes();
+  if (!indexes.isEmpty()) {
+    mSelectedFile.filename = indexes.first().data(Qt::EditRole).toString();
+    mSelectedFile.stagedModel = true;
+    return;
+  }
 
-    indexes = unstagedFiles->selectionModel()->selectedIndexes();
-    if (!indexes.isEmpty()) {
-        mSelectedFile.filename = indexes.first().data(Qt::EditRole).toString();
-        mSelectedFile.stagedModel = false;
-        return;
+  indexes = unstagedFiles->selectionModel()->selectedIndexes();
+  if (!indexes.isEmpty()) {
+    mSelectedFile.filename = indexes.first().data(Qt::EditRole).toString();
+    mSelectedFile.stagedModel = false;
+    return;
+  }
+  mSelectedFile.filename = "";
+}
+
+void DoubleTreeWidget::loadSelection() {
+  QModelIndex index;
+  Qt::CheckState state;
+
+  if (mSelectedFile.filename != "") {
+    index = mDiffTreeModel->index(mSelectedFile.filename);
+
+    if (!index.isValid()) {
+      // If index is anymore valid, because of removed file,
+      // select the parent if possible
+      auto list = mSelectedFile.filename.split(
+          QStringLiteral("/")); // TODO: check also on windows
+      list.removeLast();
+      while (!index.isValid() && !list.isEmpty()) {
+        const QString s = list.join(QStringLiteral("/"));
+        index = mDiffTreeModel->index(s);
+        list.removeLast();
+      }
     }
+    state = static_cast<Qt::CheckState>(
+        mDiffTreeModel->data(index, Qt::CheckStateRole).toInt());
+  }
+
+  if (!index.isValid() ||
+      (mSelectedFile.stagedModel && state != Qt::CheckState::Checked) ||
+      (!mSelectedFile.stagedModel && state != Qt::CheckState::Unchecked)) {
     mSelectedFile.filename = "";
+    if (mDiffTreeModel->rowCount() > 0) {
+      index = mDiffTreeModel->index(0, 0);
+      git::Index::StagedState s = static_cast<git::Index::StagedState>(
+          mDiffTreeModel->data(index, Qt::CheckStateRole).toInt());
+      mSelectedFile.stagedModel = (s == git::Index::StagedState::Staged);
+    }
+  }
+
+  mIgnoreSelectionChange = true;
+  if (mSelectedFile.stagedModel) {
+    TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
+    index = proxy->mapFromSource(index);
+    stagedFiles->selectionModel()->setCurrentIndex(index,
+                                                   QItemSelectionModel::Select);
+  } else {
+    TreeProxy *proxy = static_cast<TreeProxy *>(unstagedFiles->model());
+    index = proxy->mapFromSource(index);
+    unstagedFiles->selectionModel()->setCurrentIndex(
+        index, QItemSelectionModel::Select);
+  }
+  mIgnoreSelectionChange = false;
 }
 
-void DoubleTreeWidget::loadSelection()
-{
-    QModelIndex index;
-    Qt::CheckState state;
+void DoubleTreeWidget::treeModelStateChanged(const QModelIndex &index,
+                                             int checkState) {
+  Q_UNUSED(index)
+  Q_UNUSED(checkState)
 
-    if (mSelectedFile.filename != "") {
-        index = mDiffTreeModel->index(mSelectedFile.filename);
+  // clear editor and disable diffView when no item is selected
+  QModelIndexList stagedSelections =
+      stagedFiles->selectionModel()->selectedIndexes();
+  if (stagedSelections.count())
+    return;
 
-        if (!index.isValid()) {
-            // If index is anymore valid, because of removed file,
-            // select the parent if possible
-            auto list = mSelectedFile.filename.split(QStringLiteral("/")); // TODO: check also on windows
-            list.removeLast();
-            while (!index.isValid() && !list.isEmpty()) {
-                const QString s = list.join(QStringLiteral("/"));
-                index = mDiffTreeModel->index(s);
-                list.removeLast();
-            }
-        }
-        state = static_cast<Qt::CheckState>(mDiffTreeModel->data(index, Qt::CheckStateRole).toInt());
-    }
+  QModelIndexList unstagedSelections =
+      unstagedFiles->selectionModel()->selectedIndexes();
+  if (unstagedSelections.count())
+    return;
 
-    if (!index.isValid() || (mSelectedFile.stagedModel && state != Qt::CheckState::Checked) || (!mSelectedFile.stagedModel && state != Qt::CheckState::Unchecked)) {
-        mSelectedFile.filename = "";
-        if (mDiffTreeModel->rowCount() > 0) {
-            index = mDiffTreeModel->index(0, 0);
-            git::Index::StagedState s = static_cast<git::Index::StagedState>(mDiffTreeModel->data(index, Qt::CheckStateRole).toInt());
-            mSelectedFile.stagedModel = (s == git::Index::StagedState::Staged);
-        }
-    }
-
-    mIgnoreSelectionChange = true;
-    if (mSelectedFile.stagedModel) {
-        TreeProxy *proxy = static_cast<TreeProxy *>(stagedFiles->model());
-        index = proxy->mapFromSource(index);
-        stagedFiles->selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
-    } else {
-        TreeProxy *proxy = static_cast<TreeProxy *>(unstagedFiles->model());
-        index = proxy->mapFromSource(index);
-        unstagedFiles->selectionModel()->setCurrentIndex(index, QItemSelectionModel::Select);
-    }
-    mIgnoreSelectionChange = false;
+  mDiffView->enable(false);
+  mEditor->clear();
 }
 
-void DoubleTreeWidget::treeModelStateChanged(const QModelIndex &index, int checkState)
-{
-    Q_UNUSED(index)
-    Q_UNUSED(checkState)
+void DoubleTreeWidget::collapseCountChanged(int count) {
+  TreeView *view = static_cast<TreeView *>(QObject::sender());
 
-    // clear editor and disable diffView when no item is selected
-    QModelIndexList stagedSelections = stagedFiles->selectionModel()->selectedIndexes();
-    if (stagedSelections.count())
-        return;
-
-    QModelIndexList unstagedSelections = unstagedFiles->selectionModel()->selectedIndexes();
-    if (unstagedSelections.count())
-        return;
-
-    mDiffView->enable(false);
-    mEditor->clear();
+  if (view == stagedFiles)
+    collapseButtonStagedFiles->setState(count == 0);
+  else
+    collapseButtonUnstagedFiles->setState(count == 0);
 }
 
-void DoubleTreeWidget::collapseCountChanged(int count)
-{
-    TreeView *view = static_cast<TreeView *>(QObject::sender());
+void DoubleTreeWidget::filesSelected(const QModelIndexList &indexes) {
+  if (indexes.isEmpty())
+    return;
 
-    if (view == stagedFiles)
-        collapseButtonStagedFiles->setState(count == 0);
-    else
-        collapseButtonUnstagedFiles->setState(count == 0);
-}
-
-void DoubleTreeWidget::filesSelected(const QModelIndexList &indexes)
-{
-    if (indexes.isEmpty())
-        return;
-
-    QObject *obj = QObject::sender();
-    if (obj) {
-        TreeView *treeview = static_cast<TreeView *>(obj);
-        if (treeview == stagedFiles) {
-            unstagedFiles->deselectAll();
-        } else if (treeview == unstagedFiles) {
-            stagedFiles->deselectAll();
-        }
+  QObject *obj = QObject::sender();
+  if (obj) {
+    TreeView *treeview = static_cast<TreeView *>(obj);
+    if (treeview == stagedFiles) {
+      unstagedFiles->deselectAll();
+    } else if (treeview == unstagedFiles) {
+      stagedFiles->deselectAll();
     }
-    loadEditorContent(indexes);
+  }
+  loadEditorContent(indexes);
 }
 
-void DoubleTreeWidget::loadEditorContent(const QModelIndexList &indexes)
-{
-    QString name;
-    git::Blob blob;
-    git::Commit commit;
+void DoubleTreeWidget::loadEditorContent(const QModelIndexList &indexes) {
+  QString name;
+  git::Blob blob;
+  git::Commit commit;
 
-    if (indexes.count() == 1) {
-        RepoView *view = RepoView::parentView(this);
-        name = indexes.first().data(Qt::EditRole).toString();
-        QList<git::Commit> commits = view->commits();
-        commit = !commits.isEmpty() ? commits.first() : git::Commit();
-        int idx = mDiff.isValid() ? mDiff.indexOf(name) : -1;
-        blob = idx < 0 ? git::Blob() : view->repo().lookupBlob(mDiff.id(idx, git::Diff::NewFile));
-    }
+  if (indexes.count() == 1) {
+    RepoView *view = RepoView::parentView(this);
+    name = indexes.first().data(Qt::EditRole).toString();
+    QList<git::Commit> commits = view->commits();
+    commit = !commits.isEmpty() ? commits.first() : git::Commit();
+    int idx = mDiff.isValid() ? mDiff.indexOf(name) : -1;
+    blob = idx < 0 ? git::Blob()
+                   : view->repo().lookupBlob(mDiff.id(idx, git::Diff::NewFile));
+  }
 
-    mEditor->load(name, blob, std::move(commit));
+  mEditor->load(name, blob, std::move(commit));
 
-    mDiffView->enable(true);
-    mDiffView->updateFiles();
+  mDiffView->enable(true);
+  mDiffView->updateFiles();
 }
 
-void DoubleTreeWidget::toggleCollapseStagedFiles()
-{
-    if (collapseButtonStagedFiles->toggleState())
-        stagedFiles->expandAll();
-    else
-        stagedFiles->collapseAll();
+void DoubleTreeWidget::toggleCollapseStagedFiles() {
+  if (collapseButtonStagedFiles->toggleState())
+    stagedFiles->expandAll();
+  else
+    stagedFiles->collapseAll();
 }
 
-void DoubleTreeWidget::toggleCollapseUnstagedFiles()
-{
-    if (collapseButtonUnstagedFiles->toggleState())
-        unstagedFiles->expandAll();
-    else
-        unstagedFiles->collapseAll();
+void DoubleTreeWidget::toggleCollapseUnstagedFiles() {
+  if (collapseButtonUnstagedFiles->toggleState())
+    unstagedFiles->expandAll();
+  else
+    unstagedFiles->collapseAll();
 }
 
-void DoubleTreeWidget::stageOrUnstageSelection(TreeView *tree, bool stage)
-{
-    QModelIndexList selected;
-    foreach (const QModelIndex &index, tree->selectionModel()->selectedIndexes()) {
-        if (index.column() == 0)
-            selected.append(index);
+void DoubleTreeWidget::stageOrUnstageSelection(TreeView *tree, bool stage) {
+  QModelIndexList selected;
+  foreach (const QModelIndex &index,
+           tree->selectionModel()->selectedIndexes()) {
+    if (index.column() == 0)
+      selected.append(index);
+  }
+
+  if (selected.isEmpty())
+    return;
+
+  TreeProxy *proxy = static_cast<TreeProxy *>(tree->model());
+
+  QStringList files;
+  foreach (const QModelIndex &index, selected) {
+    QModelIndex sourceIndex = proxy->mapToSource(index);
+    Node *node = sourceIndex.data(Qt::UserRole).value<Node *>();
+    if (node)
+      node->childFiles(files);
+  }
+  files.removeDuplicates();
+
+  if (files.isEmpty())
+    return;
+
+  // Determine the path of the next file to select in this tree, before the
+  // selection changes state (and thus disappears from this tree's filtered
+  // view, shifting the row layout). The path is kept rather than the index
+  // itself, since it survives that row shift, unlike a plain QModelIndex.
+  QModelIndex next = tree->nextFileIndex(selected);
+  QString nextPath =
+      next.isValid() ? next.data(Qt::EditRole).toString() : QString();
+
+  mDiff.index().setStaged(files, stage);
+
+  if (!nextPath.isEmpty()) {
+    QModelIndex nextIndex =
+        proxy->mapFromSource(mDiffTreeModel->index(nextPath));
+    if (nextIndex.isValid()) {
+      tree->selectionModel()->setCurrentIndex(
+          nextIndex,
+          QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     }
-
-    if (selected.isEmpty())
-        return;
-
-    TreeProxy *proxy = static_cast<TreeProxy *>(tree->model());
-
-    QStringList files;
-    foreach (const QModelIndex &index, selected) {
-        QModelIndex sourceIndex = proxy->mapToSource(index);
-        Node *node = sourceIndex.data(Qt::UserRole).value<Node *>();
-        if (node)
-            node->childFiles(files);
-    }
-    files.removeDuplicates();
-
-    if (files.isEmpty())
-        return;
-
-    // Determine the path of the next file to select in this tree, before the
-    // selection changes state (and thus disappears from this tree's filtered
-    // view, shifting the row layout). The path is kept rather than the index
-    // itself, since it survives that row shift, unlike a plain QModelIndex.
-    QModelIndex next = tree->nextFileIndex(selected);
-    QString nextPath = next.isValid() ? next.data(Qt::EditRole).toString() : QString();
-
-    mDiff.index().setStaged(files, stage);
-
-    if (!nextPath.isEmpty()) {
-        QModelIndex nextIndex = proxy->mapFromSource(mDiffTreeModel->index(nextPath));
-        if (nextIndex.isValid()) {
-            tree->selectionModel()->setCurrentIndex(nextIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-        }
-    } else {
-        // The selection was the last file in the tree: don't let it fall back
-        // to selecting the parent folder (TreeView::handleSelectionChange's
-        // default deselection behavior). Unselect everything instead.
-        tree->deselectAll();
-    }
+  } else {
+    // The selection was the last file in the tree: don't let it fall back
+    // to selecting the parent folder (TreeView::handleSelectionChange's
+    // default deselection behavior). Unselect everything instead.
+    tree->deselectAll();
+  }
 }
