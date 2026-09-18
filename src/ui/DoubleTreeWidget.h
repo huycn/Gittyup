@@ -48,6 +48,7 @@ public:
 
   void setDiff(const git::Diff &diff, const QString &file = QString(),
                const QString &pathspec = QString()) override;
+  void setLoading() override;
 
   void cancelBackgroundTasks() override;
 

@@ -10,6 +10,7 @@
 #ifndef TREEVIEW_H
 #define TREEVIEW_H
 
+#include <QTimer>
 #include <QTreeView>
 #include <memory>
 #include "ViewDelegate.h"
@@ -54,6 +55,14 @@ public:
    * \return The next file index, or an invalid index if there is none
    */
   QModelIndex nextFileIndex(const QModelIndexList &selected);
+
+  /*!
+   * \brief Set whether or not to show a spinner. This is useful to indicate
+   * waiting for slow-content to arrive
+   * \param loading Indicator whether we wait for something to load
+   */
+  void setLoading(bool loading);
+
 public slots:
   /*!
    * \brief expandAll
@@ -85,6 +94,9 @@ signals:
   void filesSelected(const QModelIndexList &indexes);
   void collapseCountChanged(int count);
 
+protected:
+  void paintEvent(QPaintEvent *event) override;
+
 private:
   /*!
    * \brief setCollapseCount
@@ -115,6 +127,11 @@ private:
   std::unique_ptr<ViewDelegate> mFileListDelegatePtr;
   std::unique_ptr<ViewDelegate> mFileTreeDelegatePtr;
   int mDelegateCol{false};
+
+  bool mLoading{false};
+  float mLoadingFadein = 0;
+  int mProgress{0};
+  QTimer mTimer;
 };
 
 #endif // TREEVIEW_H

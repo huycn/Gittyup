@@ -35,6 +35,13 @@ public:
   virtual void setDiff(const git::Diff &diff, const QString &file = QString(),
                        const QString &pathspec = QString()) = 0;
 
+  /*!
+   * \brief Set whether or not to show a spinner. This is useful to indicate
+   * waiting for slow-content to arrive
+   * \param loading Indicator whether we wait for something to load
+   */
+  virtual void setLoading() {}
+
   virtual void cancelBackgroundTasks() {}
 
   virtual void find() {}
@@ -73,6 +80,7 @@ public:
   void setCommitMessage(const QString &message);
   void setDiff(const git::Diff &diff, const QString &file = QString(),
                const QString &pathspec = QString());
+  void setLoading();
 
   void cancelBackgroundTasks();
 

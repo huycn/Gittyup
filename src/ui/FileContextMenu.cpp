@@ -135,7 +135,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
   QList<ExternalTool *> diffTools;
   QList<ExternalTool *> diffToLocalTools;
   QList<ExternalTool *> mergeTools;
-  foreach (const QString &file, files) {
+  for (const QString &file : files) {
     // Convert to absolute path.
     QString path = repo.workdir().filePath(file);
 
@@ -233,7 +233,7 @@ FileContextMenu::FileContextMenu(RepoView *view, const QStringList &files,
     addSeparator();
 
     bool locked = false;
-    foreach (const QString &file, files) {
+    for (const QString &file : files) {
       if (repo.lfsIsLocked(file)) {
         locked = true;
         break;
@@ -322,7 +322,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
 
     int staged = 0;
     int unstaged = 0;
-    foreach (const QString &file, files) {
+    for (const QString &file : files) {
       switch (index.isStaged(file)) {
         case git::Index::Disabled:
           break;
@@ -374,7 +374,7 @@ void FileContextMenu::handleUncommittedChanges(const git::Index &index,
   }
 
   // handle files not submodules
-  foreach (const QString &file, filePatches) {
+  for (const QString &file : filePatches) {
     handlePath(repo, file, diff, modified, untracked);
   }
 
@@ -472,8 +472,8 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
               view->addLogEntry(tr("Saving files"),
                                 tr("Saving files of selected version to disk"));
           for (const auto &file : files) {
-            const auto saveFile =
-                view->addLogEntry(tr("Save file ") + file, "Save file", save);
+            const auto saveFile = view->addLogEntry(
+                tr("Save file %1").arg(file), "Save file", save);
             // assumption. file is a file not a folder!
             if (!exportFile(view, folder, file))
               view->error(saveFile, "save file", file, tr("Invalid Blob"));
@@ -489,7 +489,7 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
     auto filename = file.split("/").last();
 
     auto logentry =
-        view->addLogEntry(tr("Opening file"), tr("Open ") + filename);
+        view->addLogEntry(tr("Opening file"), tr("Open %1").arg(filename));
 
     if (exportFile(view, folder, file))
       QDesktopServices::openUrl(QUrl::fromLocalFile(
@@ -533,7 +533,7 @@ void FileContextMenu::handleCommits(const QList<git::Commit> &commits,
   /* disable checkout if the file is already
    * in the current working directory */
   git::Commit commit = commits.first();
-  foreach (const QString &file, files) {
+  for (const QString &file : files) {
     if (commit.tree().id(file) == repo.workdirId(file)) {
       checkout->setEnabled(false);
       checkout->setToolTip(
@@ -613,7 +613,7 @@ FileContextMenu::addExternalToolsAction(const QList<ExternalTool *> &tools) {
   });
 
   // Disable if any tools are invalid.
-  foreach (ExternalTool *tool, tools) {
+  for (ExternalTool *tool : tools) {
     if (!tool->isValid()) {
       action->setEnabled(false);
       break;
