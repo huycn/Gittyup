@@ -30,6 +30,7 @@
 #include <QStackedWidget>
 #include <QTextEdit>
 #include <QPushButton>
+#include <QTabWidget>
 
 #define INIT_REPO(repoPath)                                                    \
   QString path = Test::extractRepository(repoPath);                            \
@@ -47,6 +48,16 @@
                                                                                \
   RepoView *repoView = window.currentView();                                   \
   auto diff = mRepo.status(mRepo.index(), nullptr, false);
+
+// The commit editor, which holds the rebase buttons, lives on the detail
+// view's second tab. Bring it to front so button visibility reflects the
+// editor state rather than the tab selection.
+static void showCommitTab(DetailView *detailview) {
+  auto *tabs = detailview->findChild<QTabWidget *>(QString(),
+                                                   Qt::FindDirectChildrenOnly);
+  QVERIFY(tabs);
+  tabs->setCurrentIndex(1);
+}
 
 #ifndef GIT_EXECUTABLE
 #error                                                                         \
@@ -163,6 +174,7 @@ void TestRebase::withoutConflicts() {
 
   auto *detailview = repoView->findChild<DetailView *>();
   QVERIFY(detailview);
+  showCommitTab(detailview);
   auto *abortRebaseButton = detailview->findChild<QPushButton *>("AbortRebase");
   QVERIFY(abortRebaseButton);
   auto *continueRebaseButton =
@@ -177,6 +189,7 @@ void TestRebase::conflictingRebase() {
 
   auto *detailview = repoView->findChild<DetailView *>();
   QVERIFY(detailview);
+  showCommitTab(detailview);
   auto *abortRebaseButton = detailview->findChild<QPushButton *>("AbortRebase");
   QVERIFY(abortRebaseButton);
   auto *continueRebaseButton =
@@ -314,6 +327,7 @@ void TestRebase::conflictingRebaseCustomMessage() {
 
   auto *detailview = repoView->findChild<DetailView *>();
   QVERIFY(detailview);
+  showCommitTab(detailview);
   auto *abortRebaseButton = detailview->findChild<QPushButton *>("AbortRebase");
   QVERIFY(abortRebaseButton);
   auto *continueRebaseButton =
@@ -686,6 +700,7 @@ void TestRebase::abortMR() {
 
   auto *detailview = repoView->findChild<DetailView *>();
   QVERIFY(detailview);
+  showCommitTab(detailview);
   auto *abortRebaseButton = detailview->findChild<QPushButton *>("AbortRebase");
   QVERIFY(abortRebaseButton);
   auto *continueRebaseButton =
@@ -794,6 +809,7 @@ void TestRebase::commitDuringRebase() {
 
   auto *detailview = repoView->findChild<DetailView *>();
   QVERIFY(detailview);
+  showCommitTab(detailview);
   auto *abortRebaseButton = detailview->findChild<QPushButton *>("AbortRebase");
   QVERIFY(abortRebaseButton);
   auto *continueRebaseButton =

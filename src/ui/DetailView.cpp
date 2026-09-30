@@ -629,7 +629,6 @@ void DetailView::setLoading() {
   QList<git::Commit> commits = view->commits();
   if (!commits.isEmpty()) {
     mDetail->setCurrentIndex(CommitIndex);
-    mDetail->setVisible(true);
     static_cast<CommitDetail *>(mDetail->currentWidget())->setCommits(commits);
   }
 

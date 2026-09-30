@@ -444,7 +444,7 @@ void TestTreeView::conflictedAndStagedFile() {
 }
 
 void TestTreeView::stageAndUnstageSelectionButtons() {
-  INIT_REPO("TestRepository.zip", false);
+  INIT_REPO("TestRepository.zip");
 
   // Modify two root files only, so the unstaged tree shows exactly two
   // file rows (folder1 and the submodule are left untouched).
@@ -512,7 +512,8 @@ void TestTreeView::stageAndUnstageSelectionButtons() {
   auto unstageButton =
       doubleTree->findChild<QPushButton *>("UnstageSelectionButton");
   QVERIFY(unstageButton);
-  mouseClick(unstageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(), 0);
+  mouseClick(unstageButton, Qt::LeftButton, Qt::KeyboardModifiers(), QPoint(),
+             0);
 
   QCOMPARE(stagedModel->rowCount(), 1);
   QCOMPARE(stagedModel->data(stagedModel->index(0, 0)).toString(),
@@ -530,7 +531,7 @@ void TestTreeView::stageAndUnstageSelectionButtons() {
 }
 
 void TestTreeView::stageIntoCollapsedFolderExpandsAndSelectsNextFile() {
-  INIT_REPO("TestRepository.zip", false);
+  INIT_REPO("TestRepository.zip");
 
   // Modify both root files and both files inside folder1.
   QHash<QString, QString> fileContent{
@@ -601,7 +602,7 @@ void TestTreeView::stageIntoCollapsedFolderExpandsAndSelectsNextFile() {
 }
 
 void TestTreeView::stageLastLeafClearsSelectionInsteadOfParent() {
-  INIT_REPO("TestRepository.zip", false);
+  INIT_REPO("TestRepository.zip");
 
   // Modify only the files inside folder1, so it is the sole top-level item.
   QHash<QString, QString> fileContent{

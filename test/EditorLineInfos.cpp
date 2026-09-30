@@ -649,7 +649,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines() {
   bool submodule = mRepo.lookupSubmodule(name).isValid();
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule);
+                  path_, submodule, false);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
@@ -678,7 +678,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     // It is important that all hunks are loaded!!!!
     auto hunks = fw.hunks();
@@ -705,7 +705,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     auto hunks = fw.hunks();
     QCOMPARE(hunks.count(), 2);
@@ -740,7 +740,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines2() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule);
+                  path_, submodule, false);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
@@ -769,7 +769,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines2() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     // It is important that all hunks are loaded!!!!
     auto hunks = fw.hunks();
@@ -797,7 +797,7 @@ void TestEditorLineInfo::multipleHunks_StageSingleLines2() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     auto hunks = fw.hunks();
     QCOMPARE(hunks.count(), 2);
@@ -841,7 +841,7 @@ void TestEditorLineInfo::windowsCRLF() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule);
+                  path_, submodule, false);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
@@ -864,7 +864,7 @@ void TestEditorLineInfo::windowsCRLF() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     auto hunks = fw.hunks();
     QVERIFY(hunks.count() == 1);
@@ -895,7 +895,7 @@ void TestEditorLineInfo::windowsCRLFMultiHunk() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule);
+                  path_, submodule, false);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
@@ -922,7 +922,7 @@ void TestEditorLineInfo::windowsCRLFMultiHunk() {
 
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path, submodule);
+                  path, submodule, false);
 
     auto hunks = fw.hunks();
     QVERIFY(hunks.count() == 2);
@@ -998,7 +998,7 @@ void TestEditorLineInfo::discardCompleteDeletedContent() {
   bool submodule = mRepo.lookupSubmodule(name).isValid();
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule, repoView);
+                  path_, submodule, false, repoView);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
@@ -1030,7 +1030,7 @@ void TestEditorLineInfo::discardCompleteAddedContent() {
   bool submodule = mRepo.lookupSubmodule(name).isValid();
   {
     FileWidget fw(&diffView, diff, patch, stagedPatch, QModelIndex(), name,
-                  path_, submodule, repoView);
+                  path_, submodule, false, repoView);
     fw.setStageState(git::Index::StagedState::Unstaged);
 
     auto hunks = fw.hunks();
