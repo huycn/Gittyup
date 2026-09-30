@@ -378,10 +378,8 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
           });
 
   // Refresh when the workdir changes.
-  RepositoryWatcher *watcher = new RepositoryWatcher(repo, this);
+  RepositoryWatcher *watcher = RepositoryWatcher::create(repo, this);
   connect(notifier, &git::RepositoryNotifier::referenceUpdated, watcher,
-          &RepositoryWatcher::cancelPendingNotification);
-  connect(mCommits, &CommitList::statusChanged, watcher,
           &RepositoryWatcher::cancelPendingNotification);
 
   mDetailSplitter = new QSplitter(Qt::Vertical, this);
@@ -2709,6 +2707,11 @@ void RepoView::openTerminal() {
         Qt::QueuedConnection);
     messagebox->open();
     return;
+  }
+
+  QString repoPath = QDir::toNativeSeparators(mRepo.workdir().absolutePath());
+  if (terminalCmd.contains("%1")) {
+    terminalCmd = terminalCmd.arg(repoPath);
   }
 
 #if defined(Q_OS_WIN)

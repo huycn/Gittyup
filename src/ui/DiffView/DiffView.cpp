@@ -399,7 +399,7 @@ void DiffView::ensureVisible(TextEditor *editor, int pos) {
   file->header()->disclosureButton()->setChecked(true);
 
   int fileY = hunk->parentWidget()->y();
-  int y = fileY + hunk->y() + editor->y() + editor->pointFromPosition(pos).y();
+  int y = fileY + hunk->y() + editor->y() + editor->pointYFromPosition(pos);
 
   QScrollBar *scrollBar = verticalScrollBar();
   int val = scrollBar->value();
@@ -573,6 +573,15 @@ void DiffView::fetchMore(int fetchWidgets) {
       layout->addWidget(new CommentWidget(mComments.comments, widget()));
 
     layout->addStretch();
+  }
+
+  // Keep loading until the content overflows the viewport, since no scrollbar
+  // signal fires when everything fits on screen.
+  if (!fetchAll && addedWidgets > 0) {
+    QTimer::singleShot(0, this, [this] {
+      if (canFetchMore())
+        fetchMore();
+    });
   }
 }
 
